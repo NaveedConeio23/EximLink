@@ -38,7 +38,7 @@ export default function ChatDashboard() {
 
     const res = await fetch(
       `/api/messages?conversationId=${conversation.cr89e_crmconversationid}`,
-      { credentials: "include" }
+      { credentials: "include" },
     );
 
     const data = await res.json();
@@ -46,7 +46,7 @@ export default function ChatDashboard() {
     const sorted = data.sort(
       (a: any, b: any) =>
         new Date(a.cr89e_timestamp).getTime() -
-        new Date(b.cr89e_timestamp).getTime()
+        new Date(b.cr89e_timestamp).getTime(),
     );
 
     setMessages(sorted);
@@ -57,10 +57,7 @@ export default function ChatDashboard() {
     if (!selected || (!text.trim() && !selectedFile)) return;
 
     const formData = new FormData();
-    formData.append(
-      "to",
-      selected.cr89e_phonenumber.replace(/\s+/g, "")
-    );
+    formData.append("to", selected.cr89e_phonenumber.replace(/\s+/g, ""));
 
     if (text.trim()) {
       formData.append("message", text);
@@ -94,10 +91,8 @@ export default function ChatDashboard() {
 
   return (
     <div className="flex h-screen bg-[#0f1e17] text-white">
-
       {/* ================= SIDEBAR ================= */}
       <aside className="w-16 flex flex-col items-center py-6 bg-gradient-to-b from-[#163328] via-[#102216] to-[#0b1712] border-r border-[#1f2f28]">
-
         <div className="mb-2">
           <img src="/coneio2.png" className="w-12 h-12 object-contain" />
         </div>
@@ -130,16 +125,13 @@ export default function ChatDashboard() {
               key={c.cr89e_crmconversationid}
               onClick={() => loadMessages(c)}
               className={`p-4 rounded-xl cursor-pointer transition ${
-                selected?.cr89e_crmconversationid ===
-                c.cr89e_crmconversationid
+                selected?.cr89e_crmconversationid === c.cr89e_crmconversationid
                   ? "bg-[#1c3b25] border-l-4 border-[#6ee7a0]"
                   : "hover:bg-[#182e24]"
               }`}
             >
               <div className="font-medium">{c.cr89e_name}</div>
-              <div className="text-xs text-gray-400">
-                {c.cr89e_phonenumber}
-              </div>
+              <div className="text-xs text-gray-400">{c.cr89e_phonenumber}</div>
             </div>
           ))}
         </div>
@@ -163,7 +155,6 @@ export default function ChatDashboard() {
 
             {/* ================= MESSAGES ================= */}
             <div className="flex-1 overflow-y-auto p-8 space-y-4 flex flex-col">
-
               {messages.map((m, index) => {
                 const currentDate = new Date(m.cr89e_timestamp);
                 const previousDate =
@@ -173,11 +164,9 @@ export default function ChatDashboard() {
 
                 const showDate =
                   !previousDate ||
-                  currentDate.toDateString() !==
-                    previousDate.toDateString();
+                  currentDate.toDateString() !== previousDate.toDateString();
 
-                const isIncoming =
-                  m.cr89e_direction === 833680000;
+                const isIncoming = m.cr89e_direction === 833680000;
 
                 return (
                   <div key={m.cr89e_crmwhatsappid}>
@@ -198,25 +187,58 @@ export default function ChatDashboard() {
                         className={`px-4 py-3 rounded-2xl text-sm shadow
                         ${
                           isIncoming
-                            ? "bg-[#1c3b25] rounded-bl-none"
-                            : "bg-[#6ee7a0] text-black rounded-br-none"
-                        }
-                        max-w-[70%] w-fit`}
-                      >
+                          ? "bg-[#1c3b25] rounded-bl-none"
+                          : "bg-[#6ee7a0] text-black rounded-br-none"
+                          }
+                          max-w-[70%] w-fit`}
+                                        >
+                        {/* TEXT MESSAGE */}
                         {m.cr89e_messagetext && (
-                          <p className="break-words">
+                          <p className="break-words whitespace-pre-wrap">
                             {m.cr89e_messagetext}
                           </p>
                         )}
 
+                        {/* FILE MESSAGE */}
                         {m.cr89e_fileurl && (
-                          <a
-                            href={m.cr89e_fileurl}
-                            target="_blank"
-                            className="block mt-2 underline text-xs"
-                          >
-                            📎 Download File
-                          </a>
+                          <div className="mt-2">
+                            <div
+                              className={`flex items-center justify-between gap-4 p-3 rounded-xl ${
+                                isIncoming
+                                  ? "bg-[#244635]"
+                                  : "bg-white text-black"
+                              }`}
+                            >
+                              {/* File Info */}
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm break-all">
+                                  {decodeURIComponent(
+                                    m.cr89e_fileurl
+                                      .split("/")
+                                      .pop()
+                                      ?.split("?")[0] || "File",
+                                  )}
+                                </span>
+                                <span className="text-xs opacity-70">
+                                  File Attachment
+                                </span>
+                              </div>
+
+                              {/* Download Button */}
+                              <a
+                                href={m.cr89e_fileurl}
+                                target="_blank"
+                                download
+                                className={`text-xs px-3 py-1 rounded-md font-medium ${
+                                  isIncoming
+                                    ? "bg-[#6ee7a0] text-black"
+                                    : "bg-[#1c3b25] text-white"
+                                }`}
+                              >
+                                Download
+                              </a>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -256,7 +278,6 @@ export default function ChatDashboard() {
             {/* ================= INPUT ================= */}
             <div className="p-6 border-t border-[#1f2f28] bg-[#12251d]">
               <div className="flex items-center gap-4">
-
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -279,9 +300,7 @@ export default function ChatDashboard() {
                   placeholder="Type a message..."
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && sendMessage()
-                  }
+                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                 />
 
                 <button
@@ -290,7 +309,6 @@ export default function ChatDashboard() {
                 >
                   ➤
                 </button>
-
               </div>
             </div>
           </>
