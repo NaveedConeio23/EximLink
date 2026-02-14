@@ -187,11 +187,11 @@ export default function ChatDashboard() {
                         className={`px-4 py-3 rounded-2xl text-sm shadow
                         ${
                           isIncoming
-                          ? "bg-[#1c3b25] rounded-bl-none"
-                          : "bg-[#6ee7a0] text-black rounded-br-none"
-                          }
+                            ? "bg-[#1c3b25] rounded-bl-none"
+                            : "bg-[#6ee7a0] text-black rounded-br-none"
+                        }
                           max-w-[70%] w-fit`}
-                                        >
+                      >
                         {/* TEXT MESSAGE */}
                         {m.cr89e_messagetext && (
                           <p className="break-words whitespace-pre-wrap">
@@ -228,11 +228,11 @@ export default function ChatDashboard() {
                               <a
                                 href={m.cr89e_fileurl}
                                 target="_blank"
-                                download
-                                className={`text-xs px-3 py-1 rounded-md font-medium ${
+                                download={m.cr89e_filename}
+                                className={`text-xs px-3 py-1 rounded-md font-medium transition ${
                                   isIncoming
-                                    ? "bg-[#6ee7a0] text-black"
-                                    : "bg-[#1c3b25] text-white"
+                                    ? "bg-[#6ee7a0] text-black hover:opacity-90"
+                                    : "bg-[#1c3b25] text-white hover:opacity-90"
                                 }`}
                               >
                                 Download
