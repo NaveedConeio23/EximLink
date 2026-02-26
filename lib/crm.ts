@@ -197,8 +197,19 @@ async function sendWelcomeTemplate(
                 parameters: [
                   {
                     type: "text",
-                    parameter_name: "customer_name", // ✅ required by newer Meta API
+                    parameter_name: "customer_name",
                     text: safeName,
+                  },
+                ],
+              },
+              {
+                type: "button",
+                sub_type: "url",
+                index: "0",
+                parameters: [
+                  {
+                    type: "text",
+                    text: "home", // ✅ the dynamic part appended to your button URL
                   },
                 ],
               },
@@ -224,7 +235,7 @@ async function sendWelcomeTemplate(
     await createWhatsAppMessage(
       crmToken,
       conversationId,
-      "EximLink Bot",
+      "Coneio Bot",
       phone,
       welcomeText,
       833680001, // outgoing direction
