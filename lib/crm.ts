@@ -167,7 +167,14 @@ async function sendWelcomeTemplate(
 
     const phone = phoneRaw.replace(/\D/g, "");
 
-    console.log("🚀 Sending welcome template to:", phone);
+    // ✅ Sanitize name — must be non-empty string, no special chars
+    const safeName = (customerName || "")
+      .trim()
+      .replace(/[^a-zA-Z0-9 ]/g, "") // remove special chars
+      .trim()
+      || "Customer"; // final fallback if empty after cleaning
+
+    console.log("🚀 Sending welcome template to:", phone, "| Name:", safeName);
 
     const response = await fetch(
       `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
@@ -190,7 +197,8 @@ async function sendWelcomeTemplate(
                 parameters: [
                   {
                     type: "text",
-                    text: customerName || "Customer",
+                    parameter_name: "customer_name", // ✅ required by newer Meta API
+                    text: safeName,
                   },
                 ],
               },
