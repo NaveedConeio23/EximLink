@@ -435,7 +435,9 @@ export async function getCRMToken() {
 }
 
 // =====================================
-// 📤 SEND WHATSAPP TEMPLATE
+// =====================================
+// 📤 SEND PLAIN TEXT WELCOME MESSAGE
+// No template needed — works within 24hr window for free
 // =====================================
 async function sendWelcomeTemplate(
   phoneRaw: string,
@@ -450,16 +452,14 @@ async function sendWelcomeTemplate(
     }
 
     const phone = phoneRaw.replace(/\D/g, "");
+    const safeName = (customerName || "").trim() || "Customer";
 
-    // ✅ Sanitize name — must be non-empty string, no special chars
-    const safeName = (customerName || "")
-      .trim()
-      .replace(/[^a-zA-Z0-9 ]/g, "") // remove special chars
-      .trim()
-      || "Customer"; // final fallback if empty after cleaning
+    // ✅ Build the welcome message text (same content as your template)
+    const welcomeText = `Hello ${safeName} 👋\n\nWelcome to Coneio Exim.\n\nThank you for reaching out to us. We operate across multiple global platforms including:\n\n• Dollarexim – Cross-border trade solutions\n• SeaOne – Global B2B marketplace\n• SeaOne Digital – Digital growth & technology services\n• Coneio – Granite import & export via shipping\n\nOur team has received your enquiry and will get back to you shortly.\n\nKindly share your specific requirement for faster assistance.\n\n🌐 Visit us: https://www.dollarexim.com`;
 
-    console.log("🚀 Sending welcome template to:", phone, "| Name:", safeName);
+    console.log("🚀 Sending welcome message to:", phone, "| Name:", safeName);
 
+    // ✅ Send as plain text — no payment needed, works within 24hr window
     const response = await fetch(
       `https://graph.facebook.com/v19.0/${process.env.PHONE_NUMBER_ID}/messages`,
       {
@@ -471,34 +471,8 @@ async function sendWelcomeTemplate(
         body: JSON.stringify({
           messaging_product: "whatsapp",
           to: phone,
-          type: "template",
-          template: {
-            name: "welcome_message",
-            language: { code: "en" },
-            components: [
-              {
-                type: "body",
-                parameters: [
-                  {
-                    type: "text",
-                    parameter_name: "customer_name",
-                    text: safeName,
-                  },
-                ],
-              },
-              {
-                type: "button",
-                sub_type: "url",
-                index: "0",
-                parameters: [
-                  {
-                    type: "text",
-                    text: process.env.WHATSAPP_BUTTON_URL_SUFFIX || "",
-                  },
-                ],
-              },
-            ],
-          },
+          type: "text",
+          text: { body: welcomeText },
         }),
       }
     );
@@ -507,26 +481,24 @@ async function sendWelcomeTemplate(
     console.log("📨 WhatsApp API Response:", data);
 
     if (!response.ok) {
-      console.error("❌ Template Send Error:", data);
+      console.error("❌ Welcome Message Send Error:", data);
       return;
     }
 
-    console.log("✅ Welcome template sent successfully");
+    console.log("✅ Welcome message sent successfully");
 
-    // ✅ Save welcome message to CRM so it shows in dashboard
-    const welcomeText = `Hello ${customerName} 👋\n\nWelcome to Coneio Exim.\n\nThank you for reaching out to us. We operate across multiple global platforms including:\n\n• Dollarexim – Cross-border trade solutions\n• SeaOne – Global B2B marketplace\n• SeaOne Digital – Digital growth & technology services\n• Coneio – Granite import & export via shipping\n\nOur team has received your enquiry and will get back to you shortly.\n\nKindly share your specific requirement for faster assistance.`;
-
+    // ✅ Save to CRM so it shows in dashboard
     await createWhatsAppMessage(
       crmToken,
       conversationId,
       "EximLink Bot",
       phone,
       welcomeText,
-      833680001, // outgoing direction
+      833680001,
     );
 
   } catch (error) {
-    console.error("🔥 WhatsApp Template Error:", error);
+    console.error("🔥 Welcome Message Error:", error);
   }
 }
 

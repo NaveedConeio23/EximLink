@@ -631,7 +631,7 @@ cloudinary.config({
 // ==================================================
 const AUTO_REPLY_RULES: { type: "exact" | "keyword"; match: string; reply: string }[] = [
   // ── Greetings ──
-  { type: "exact",   match: "hi",           reply: "Hello! 👋 Welcome to EximLink. How can we help you today?" },
+  { type: "exact",   match: "hi",           reply: "Hello! 👋 Welcome to ConeioExim. How can we help you today?" },
   { type: "exact",   match: "hello",        reply: "Hi there! 👋 How can we assist you?" },
   { type: "exact",   match: "hey",          reply: "Hey! 👋 How can we help you today?" },
   { type: "exact",   match: "good morning", reply: "Good morning! ☀️ How can we assist you today?" },
