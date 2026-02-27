@@ -1109,7 +1109,6 @@ async function getAIReply(
   }
 }
 
-}
 
 // ==================================================
 // 📤 SEND WHATSAPP TEXT MESSAGE
