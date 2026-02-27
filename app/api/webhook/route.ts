@@ -947,7 +947,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
@@ -962,29 +961,75 @@ cloudinary.config({
 });
 
 // ==================================================
-// 🧠 BUSINESS SYSTEM PROMPT
+// 🧠 SEAONE ECOSYSTEM SYSTEM PROMPT
 // ==================================================
-const SYSTEM_PROMPT = `You are a smart, friendly WhatsApp customer support assistant for Coneio Exim Pvt Ltd. Keep replies SHORT (under 100 words), warm, and helpful.
+const SYSTEM_PROMPT = `You are the official AI assistant for the SeaOne Global Trade Ecosystem on WhatsApp.
 
-COMPANY PLATFORMS:
-- Dollarexim (dollarexim.com) — Cross-border trade solutions
-- SeaOne (seaone.com) — Global B2B marketplace
-- SeaOne Digital (seaonedigital.com) — Digital growth & tech services
-- SilkRouteX (silkroutex.com) — International trade & logistics
-- Coneio (coneioexim.com) — Granite import & export
+== WHO YOU SERVE ==
+- Shippers and exporters
+- Freight forwarders and logistics agents
+- Global buyers and importers
+- Trade compliance officers
+- Granite buyers and stone product traders
 
-PRODUCTS: Granite slabs, tiles, stone products, B2B trade services, export goods.
+== OUR ECOSYSTEM (5 PLATFORMS) ==
 
-PRICING: Never give exact prices. Ask for product, quantity, destination, then say team will send quote in 24-48 hours.
+🟢 1. CONEIO (coneio.com)
+- Corporate and group platform
+- Brand positioning and company identity
+- Group overview of the entire SeaOne ecosystem
+- Direct users here for: company info, about us, group structure, investor/partner inquiries
 
-SHIPPING: Ship globally. Sea freight 15-30 days, Air 3-7 days. Handle all docs.
+🔵 2. SEAONE.IO (seaone.io)
+- Smart Digital Freight Engine — the CORE logistics intelligence layer
+- Input: Origin port/city + Destination port/city
+- Output: Best optimized route + real-time pricing
+- End-to-end logistics management
+- Direct users here for: freight rates, shipping routes, logistics quotes, container booking, sea/air freight
 
-RULES:
-- Reply directly to what customer asks. Be specific, not generic.
-- If customer asks about price/quote → ask for product details
-- If customer asks about delivery → ask destination and product
-- If customer asks about order → ask order details
-- Only say HANDOFF_REQUIRED (at end of reply) when: customer is angry/complaining, wants to negotiate price, needs urgent help you cannot provide, asks to speak to a human, or asks something completely outside your knowledge.`;
+🟣 3. SEAONE DIGITAL (seaonedigital.com)
+- Partner Network and Digital Logistics Ecosystem — the B2B network backbone
+- Connects: freight forwarders, agents, shipping partners, network collaborators
+- Platform for logistics partners to join and collaborate
+- Direct users here for: becoming a logistics partner, forwarder network, agent collaboration, B2B logistics partnerships
+
+🟠 4. DOLLAREXIM (dollarexim.com)
+- Global Granite Trade Platform — the Trade Commerce Layer
+- Product listings: granite slabs, tiles, stone products (Black Galaxy, Tan Brown, Kashmir White, Steel Grey, etc.)
+- Multi-country availability and export-ready products
+- Ships worldwide with full export documentation
+- Direct users here for: granite buying, stone products, export pricing, product catalog, granite specifications
+
+🟡 5. SILKROUTEX (silkroutex.com)
+- AI-Powered HSN & Compliance Intelligence — the Trade Compliance Layer
+- HSN-based product classification for any commodity
+- Country-wise trade compliance rules and regulations
+- AI-powered classification results
+- Direct users here for: HSN codes, HS codes, trade compliance, import/export regulations, customs classification, duty rates
+
+== HOW TO RESPOND ==
+- Be professional, clear, and concise (under 120 words)
+- Always identify which platform best suits the customer's need
+- Guide them to the correct platform with the URL
+- Use 1-2 emojis max
+- For freight/logistics queries → seaone.io
+- For granite/stone product queries → dollarexim.com
+- For HSN/compliance queries → silkroutex.com
+- For partner/forwarder queries → seaonedigital.com
+- For company/corporate queries → coneio.com
+- Reply in the same language the customer writes in
+
+== PRICING ==
+- Never give exact freight rates or granite prices — these are dynamic
+- For freight: ask origin, destination, cargo type, weight/volume → direct to seaone.io for instant quote
+- For granite: ask product type, quantity, destination → our team sends quote within 24-48 hours
+
+== HANDOFF RULE ==
+Add HANDOFF_REQUIRED at the very end of your reply ONLY when:
+- Customer is angry, frustrated, or complaining about an existing order/shipment
+- Customer explicitly asks to speak to a human or manager
+- Customer wants to finalize a large deal or negotiate contract terms
+- You genuinely cannot answer the question confidently`;
 
 // ==================================================
 // 🔄 HANDOFF STATE (in-memory)
@@ -992,111 +1037,84 @@ RULES:
 const handoffState = new Map<string, boolean>();
 
 // ==================================================
-// 🤖 GET AI REPLY FROM HUGGINGFACE (Mistral-7B)
+// 🤖 GET AI REPLY FROM GOOGLE GEMINI
 // ==================================================
 async function getAIReply(
   customerMessage: string,
   customerName: string,
   phone: string
 ): Promise<{ reply: string; isHandoff: boolean }> {
-  const isLimited = handoffState.get(phone) || false;
 
-  if (isLimited) {
+  // Limited/handoff mode
+  if (handoffState.get(phone)) {
     return {
-      reply: "Thank you for your patience 🙏 Our team member will get back to you shortly.\n\nFor urgent queries, visit us at:\n🌐 dollarexim.com | seaone.com | coneioexim.com",
+      reply: "Thank you for your patience 🙏 Our team member will connect with you shortly.\n\nMeanwhile, explore our platforms:\n🔵 seaone.io — Freight rates & routes\n🟠 dollarexim.com — Granite trade\n🟡 silkroutex.com — HSN & compliance\n🟢 coneio.com — About us",
       isHandoff: false,
     };
   }
 
-  // Mistral instruct format
-  const prompt = `<s>[INST] ${SYSTEM_PROMPT}
-
-Customer name: ${customerName}
-Customer message: ${customerMessage}
-
-Reply directly to their question. Be specific and helpful. Keep it under 80 words. [/INST]`;
-
   try {
-    console.log("🤖 Calling HuggingFace for:", customerMessage);
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+    console.log(`💬 Gemini query [${customerName}]: "${customerMessage}"`);
 
     const response = await fetch(
-      "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            max_new_tokens: 200,
+          contents: [
+            {
+              parts: [
+                {
+                  text: `${SYSTEM_PROMPT}\n\nCustomer name: ${customerName}\nCustomer message: "${customerMessage}"\n\nRespond now:`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
             temperature: 0.6,
-            top_p: 0.9,
-            do_sample: true,
-            return_full_text: false,
+            maxOutputTokens: 350,
+            topP: 0.9,
           },
         }),
-        signal: controller.signal,
       }
     );
 
-    clearTimeout(timeout);
-
     const data = await response.json();
-    console.log("📨 HuggingFace raw response:", JSON.stringify(data).substring(0, 300));
 
-    // Handle model loading state
-    if (data?.error?.includes("loading") || data?.error?.includes("currently loading")) {
-      console.log("⏳ Model is loading, using fallback...");
+    if (!response.ok) {
+      console.error("❌ Gemini API Error:", JSON.stringify(data));
       return {
-        reply: "Thanks for your message! 😊 We're getting things ready. Please send your message again in a moment.",
+        reply: "Thank you for contacting SeaOne! 🙏 Could you share more details about what you need — freight, granite, HSN codes, or logistics partnerships?",
         isHandoff: false,
       };
     }
 
-    if (!response.ok || !Array.isArray(data) || !data[0]?.generated_text) {
-      console.error("❌ HuggingFace Error:", data);
+    const rawReply: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    if (!rawReply) {
+      console.error("❌ Empty Gemini reply:", JSON.stringify(data));
       return {
-        reply: "Thank you for reaching out to Coneio Exim! 🙏 Could you please share more details about what you need? (product, quantity, destination)",
+        reply: "Thank you for your message! Our team will get back to you shortly. 🙏",
         isHandoff: false,
       };
     }
 
-    let rawReply: string = data[0].generated_text.trim();
+    console.log(`🤖 Gemini reply: "${rawReply.substring(0, 150)}"`);
 
-    // Clean up any leaked prompt artifacts
-    rawReply = rawReply
-      .replace(/\[INST\][\s\S]*?\[\/INST\]/g, "")
-      .replace(/^Assistant:/i, "")
-      .replace(/^Bot:/i, "")
-      .trim();
-
-    // Check if AI triggered handoff
     const isHandoff = rawReply.includes("HANDOFF_REQUIRED");
-
     let cleanReply = rawReply.replace("HANDOFF_REQUIRED", "").trim();
 
     if (isHandoff) {
-      cleanReply += "\n\n🤝 One of our team members will personally connect with you shortly to assist you further.";
+      cleanReply += "\n\n🤝 A team member from SeaOne will personally connect with you shortly.";
       handoffState.set(phone, true);
       console.log(`🔀 Handoff triggered for: ${phone}`);
     }
 
     return { reply: cleanReply, isHandoff };
 
-  } catch (error: any) {
-    if (error?.name === "AbortError") {
-      console.error("⏱️ HuggingFace timeout");
-      return {
-        reply: "Sorry for the delay! 😊 Our bot is warming up. Please resend your message in a moment.",
-        isHandoff: false,
-      };
-    }
-    console.error("🔥 HuggingFace error:", error);
+  } catch (error) {
+    console.error("🔥 Gemini error:", error);
     return {
       reply: "Thank you for your message! Our team will get back to you shortly. 🙏",
       isHandoff: false,
@@ -1211,14 +1229,9 @@ export async function POST(req: NextRequest) {
 
     // ================= AI REPLY (text only) =================
     if (message.type === "text" && text) {
-      console.log(`💬 [${name}] (${phone}): "${text}"`);
-
-      const { reply, isHandoff } = await getAIReply(text, name, phone);
-
-      console.log(`🤖 Bot reply: "${reply.substring(0, 100)}"`);
-
+      const { reply } = await getAIReply(text, name, phone);
       await sendWhatsAppReply(phone, reply);
-      await createWhatsAppMessage(crmToken, conversationId!, "EximLink Bot", phone, reply, 833680001);
+      await createWhatsAppMessage(crmToken, conversationId!, "SeaOne Bot", phone, reply, 833680001);
     }
 
     return NextResponse.json({ received: true });
