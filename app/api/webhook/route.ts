@@ -948,7 +948,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
@@ -963,65 +962,32 @@ cloudinary.config({
 });
 
 // ==================================================
-// 🧠 BUSINESS SYSTEM PROMPT — Full company knowledge
+// 🧠 BUSINESS SYSTEM PROMPT
 // ==================================================
-const SYSTEM_PROMPT = `You are a smart, friendly WhatsApp customer support assistant for Coneio Exim Pvt Ltd.
+const SYSTEM_PROMPT = `You are a smart, friendly WhatsApp customer support assistant for Coneio Exim Pvt Ltd. Keep replies SHORT (under 100 words), warm, and helpful.
 
-== ABOUT THE COMPANY ==
-Coneio Exim Pvt Ltd is a global export/import company operating across multiple platforms:
+COMPANY PLATFORMS:
+- Dollarexim (dollarexim.com) — Cross-border trade solutions
+- SeaOne (seaone.com) — Global B2B marketplace
+- SeaOne Digital (seaonedigital.com) — Digital growth & tech services
+- SilkRouteX (silkroutex.com) — International trade & logistics
+- Coneio (coneioexim.com) — Granite import & export
 
-1. **Dollarexim** (dollarexim.com) — Cross-border trade solutions. Helps businesses with international trade, import/export documentation, and global sourcing.
+PRODUCTS: Granite slabs, tiles, stone products, B2B trade services, export goods.
 
-2. **SeaOne** (seaone.com) — Global B2B marketplace connecting buyers and sellers worldwide for bulk trade.
+PRICING: Never give exact prices. Ask for product, quantity, destination, then say team will send quote in 24-48 hours.
 
-3. **SeaOne Digital** (seaonedigital.com) — Digital growth & technology services including web development, digital marketing, and tech solutions for businesses.
+SHIPPING: Ship globally. Sea freight 15-30 days, Air 3-7 days. Handle all docs.
 
-4. **SilkRouteX** (silkroutex.com) — International trade and logistics platform connecting suppliers across Asia and beyond.
-
-5. **Coneio** (coneioexim.com) — Granite import & export via shipping. Specializes in granite slabs, tiles, and stone products sourced from India and exported globally.
-
-== PRODUCTS WE SELL ==
-- Granite slabs, tiles, and stone products (various colors and finishes)
-- Export goods across multiple categories via our platforms
-- B2B trade services and sourcing solutions
-
-== PRICING & QUOTES ==
-- We do NOT share fixed prices on WhatsApp — prices depend on product type, quantity, destination, and current market rates
-- Always ask for: product name, quantity (in sq ft, sq m, or tonnes), destination country, and preferred delivery timeline
-- Then tell them our team will prepare a formal quote and send it within 24-48 hours
-
-== SHIPPING & DELIVERY ==
-- We ship globally to all major countries
-- Typical delivery: 15-30 days for sea freight, 3-7 days for air freight
-- We handle all documentation: Bill of Lading, Certificate of Origin, Packing List, Commercial Invoice
-- Minimum order quantities vary by product
-
-== HOW TO RESPOND ==
-- Be warm, professional, and concise
-- Use relevant emojis sparingly
-- Always collect required info (product, quantity, destination) before promising a quote
-- If someone asks for something very specific like exact prices, negotiation, complaints, or urgent order issues — trigger handoff (see below)
-- Keep replies under 200 words
-- Reply in the same language the customer uses
-
-== HANDOFF TRIGGER ==
-If the customer asks any of the following, you MUST include the exact phrase "HANDOFF_REQUIRED" at the very END of your response (after your message):
-- Exact/final pricing or price negotiation
-- Specific order complaints or disputes  
-- Urgent shipment issues
-- Legal or contract matters
-- Requests to speak to a manager or specific person
-- Any question you genuinely cannot answer confidently
-
-== LIMITED MODE ==
-If you are told the conversation is in LIMITED MODE, only respond with:
-"Thank you for your patience 🙏 Our team member will get back to you shortly. For urgent queries, you can also reach us at our websites: dollarexim.com | seaone.com | coneioexim.com"
-Do not answer any other questions in limited mode.`;
+RULES:
+- Reply directly to what customer asks. Be specific, not generic.
+- If customer asks about price/quote → ask for product details
+- If customer asks about delivery → ask destination and product
+- If customer asks about order → ask order details
+- Only say HANDOFF_REQUIRED (at end of reply) when: customer is angry/complaining, wants to negotiate price, needs urgent help you cannot provide, asks to speak to a human, or asks something completely outside your knowledge.`;
 
 // ==================================================
-// 🔄 IN-MEMORY HANDOFF STATE
-// Tracks which phone numbers are in limited mode
-// In production you could store this in a DB/Redis
+// 🔄 HANDOFF STATE (in-memory)
 // ==================================================
 const handoffState = new Map<string, boolean>();
 
@@ -1035,12 +1001,27 @@ async function getAIReply(
 ): Promise<{ reply: string; isHandoff: boolean }> {
   const isLimited = handoffState.get(phone) || false;
 
-  // Build Mistral instruct-format prompt
-  const prompt = isLimited
-    ? `<s>[INST] ${SYSTEM_PROMPT}\n\n[LIMITED MODE] Customer says: "${customerMessage}" [/INST]`
-    : `<s>[INST] ${SYSTEM_PROMPT}\n\nCustomer name: ${customerName}\nCustomer message: "${customerMessage}" [/INST]`;
+  if (isLimited) {
+    return {
+      reply: "Thank you for your patience 🙏 Our team member will get back to you shortly.\n\nFor urgent queries, visit us at:\n🌐 dollarexim.com | seaone.com | coneioexim.com",
+      isHandoff: false,
+    };
+  }
+
+  // Mistral instruct format
+  const prompt = `<s>[INST] ${SYSTEM_PROMPT}
+
+Customer name: ${customerName}
+Customer message: ${customerMessage}
+
+Reply directly to their question. Be specific and helpful. Keep it under 80 words. [/INST]`;
 
   try {
+    console.log("🤖 Calling HuggingFace for:", customerMessage);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
     const response = await fetch(
       "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3",
       {
@@ -1052,63 +1033,76 @@ async function getAIReply(
         body: JSON.stringify({
           inputs: prompt,
           parameters: {
-            max_new_tokens: 300,       // reply length
-            temperature: 0.7,          // creativity (0=strict, 1=creative)
+            max_new_tokens: 200,
+            temperature: 0.6,
             top_p: 0.9,
             do_sample: true,
-            return_full_text: false,   // only return new generated text, not the prompt
+            return_full_text: false,
           },
         }),
+        signal: controller.signal,
       }
     );
 
-    const data = await response.json();
+    clearTimeout(timeout);
 
-    // HuggingFace returns an array: [{ generated_text: "..." }]
-    if (!response.ok || !Array.isArray(data)) {
+    const data = await response.json();
+    console.log("📨 HuggingFace raw response:", JSON.stringify(data).substring(0, 300));
+
+    // Handle model loading state
+    if (data?.error?.includes("loading") || data?.error?.includes("currently loading")) {
+      console.log("⏳ Model is loading, using fallback...");
+      return {
+        reply: "Thanks for your message! 😊 We're getting things ready. Please send your message again in a moment.",
+        isHandoff: false,
+      };
+    }
+
+    if (!response.ok || !Array.isArray(data) || !data[0]?.generated_text) {
       console.error("❌ HuggingFace Error:", data);
       return {
-        reply: "Thank you for reaching out! Our team will get back to you shortly. 🙏",
+        reply: "Thank you for reaching out to Coneio Exim! 🙏 Could you please share more details about what you need? (product, quantity, destination)",
         isHandoff: false,
       };
     }
 
-    const rawReply: string = data[0]?.generated_text || "";
+    let rawReply: string = data[0].generated_text.trim();
 
-    if (!rawReply) {
-      return {
-        reply: "Thank you for your message! Our team will get back to you shortly. 🙏",
-        isHandoff: false,
-      };
-    }
+    // Clean up any leaked prompt artifacts
+    rawReply = rawReply
+      .replace(/\[INST\].*?\[\/INST\]/gs, "")
+      .replace(/^Assistant:/i, "")
+      .replace(/^Bot:/i, "")
+      .trim();
 
     // Check if AI triggered handoff
     const isHandoff = rawReply.includes("HANDOFF_REQUIRED");
 
-    // Clean reply — remove handoff marker and any leftover prompt artifacts
-    let cleanReply = rawReply
-      .replace("HANDOFF_REQUIRED", "")
-      .replace(/^\s*\[\/INST\]\s*/g, "")  // remove any leaked prompt tags
-      .trim();
+    let cleanReply = rawReply.replace("HANDOFF_REQUIRED", "").trim();
 
-    // If handoff triggered, append the handoff message
     if (isHandoff) {
       cleanReply += "\n\n🤝 One of our team members will personally connect with you shortly to assist you further.";
-      handoffState.set(phone, true); // switch to limited mode
+      handoffState.set(phone, true);
       console.log(`🔀 Handoff triggered for: ${phone}`);
     }
 
     return { reply: cleanReply, isHandoff };
 
-  } catch (error) {
-    console.error("🔥 HuggingFace fetch error:", error);
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      console.error("⏱️ HuggingFace timeout");
+      return {
+        reply: "Sorry for the delay! 😊 Our bot is warming up. Please resend your message in a moment.",
+        isHandoff: false,
+      };
+    }
+    console.error("🔥 HuggingFace error:", error);
     return {
       reply: "Thank you for your message! Our team will get back to you shortly. 🙏",
       isHandoff: false,
     };
   }
 }
-
 
 // ==================================================
 // 📤 SEND WHATSAPP TEXT MESSAGE
@@ -1130,9 +1124,8 @@ async function sendWhatsAppReply(to: string, replyText: string) {
       }),
     }
   );
-
   const data = await res.json();
-  console.log("🤖 AI reply sent:", data?.messages?.[0]?.id || data);
+  console.log("✅ WhatsApp reply sent:", data?.messages?.[0]?.id || JSON.stringify(data));
   return data;
 }
 
@@ -1148,7 +1141,6 @@ export async function GET(req: NextRequest) {
   if (mode === "subscribe" && token === process.env.WHATSAPP_VERIFY_TOKEN) {
     return new Response(challenge || "", { status: 200 });
   }
-
   return new Response("Verification failed", { status: 403 });
 }
 
@@ -1161,9 +1153,7 @@ export async function POST(req: NextRequest) {
     const change = body?.entry?.[0]?.changes?.[0]?.value;
     const message = change?.messages?.[0];
 
-    if (!message) {
-      return NextResponse.json({ received: true });
-    }
+    if (!message) return NextResponse.json({ received: true });
 
     const phone = message.from;
     const name = change?.contacts?.[0]?.profile?.name || "Customer";
@@ -1180,21 +1170,13 @@ export async function POST(req: NextRequest) {
     }
 
     // ================= MEDIA =================
-    if (
-      message.type === "document" ||
-      message.type === "image" ||
-      message.type === "video"
-    ) {
-      const mediaId =
-        message.document?.id ||
-        message.image?.id ||
-        message.video?.id;
+    if (["document", "image", "video"].includes(message.type)) {
+      const mediaId = message.document?.id || message.image?.id || message.video?.id;
 
       const mediaRes = await fetch(
         `https://graph.facebook.com/v18.0/${mediaId}`,
         { headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` } }
       );
-
       const mediaData = await mediaRes.json();
       if (!mediaData.url) return NextResponse.json({ received: true });
 
@@ -1207,22 +1189,17 @@ export async function POST(req: NextRequest) {
       const fileNameWithoutExt = originalFileName.replace(/\.[^/.]+$/, "");
 
       const uploadResult: any = await new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream(
-            {
-              resource_type: "auto",
-              folder: `whatsapp/${phone}`,
-              public_id: fileNameWithoutExt,
-              use_filename: true,
-              unique_filename: false,
-              overwrite: true,
-            },
-            (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            }
-          )
-          .end(buffer);
+        cloudinary.uploader.upload_stream(
+          {
+            resource_type: "auto",
+            folder: `whatsapp/${phone}`,
+            public_id: fileNameWithoutExt,
+            use_filename: true,
+            unique_filename: false,
+            overwrite: true,
+          },
+          (error, result) => { if (error) reject(error); else resolve(result); }
+        ).end(buffer);
       });
 
       fileUrl = uploadResult.secure_url;
@@ -1230,37 +1207,18 @@ export async function POST(req: NextRequest) {
     }
 
     // ================= SAVE INCOMING TO CRM =================
-    await createWhatsAppMessage(
-      crmToken,
-      conversationId!,
-      name,
-      phone,
-      text,
-      833680000, // incoming
-      fileUrl
-    );
+    await createWhatsAppMessage(crmToken, conversationId!, name, phone, text, 833680000, fileUrl);
 
-    // ================= AI REPLY (text messages only) =================
+    // ================= AI REPLY (text only) =================
     if (message.type === "text" && text) {
-      console.log(`💬 Message from ${name} (${phone}): "${text}"`);
+      console.log(`💬 [${name}] (${phone}): "${text}"`);
 
       const { reply, isHandoff } = await getAIReply(text, name, phone);
 
-      console.log(`🤖 AI reply: "${reply.substring(0, 80)}..."`);
-      if (isHandoff) console.log(`🔀 Conversation ${phone} switched to LIMITED MODE`);
+      console.log(`🤖 Bot reply: "${reply.substring(0, 100)}"`);
 
-      // Send reply via WhatsApp
       await sendWhatsAppReply(phone, reply);
-
-      // Save AI reply to CRM as outgoing
-      await createWhatsAppMessage(
-        crmToken,
-        conversationId!,
-        "EximLink Bot",
-        phone,
-        reply,
-        833680001, // outgoing
-      );
+      await createWhatsAppMessage(crmToken, conversationId!, "EximLink Bot", phone, reply, 833680001);
     }
 
     return NextResponse.json({ received: true });
