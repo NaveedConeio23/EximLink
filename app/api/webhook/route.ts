@@ -1256,6 +1256,8 @@
 
 
 
+
+
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
@@ -1334,9 +1336,10 @@ async function getAIReply(
           ],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 300,
+            maxOutputTokens: 800,
             topP: 0.9,
           },
+          thinkingConfig: { thinkingBudget: 0 },
         }),
       }
     );
@@ -1347,7 +1350,7 @@ async function getAIReply(
     if (!response.ok) {
       console.error("❌ Gemini Error:", JSON.stringify(data));
       return {
-        reply: "Thank you for contacting Coneio! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
+        reply: "Thank you for contacting SeaOne! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
         isHandoff: false,
       };
     }
@@ -1368,7 +1371,7 @@ async function getAIReply(
     let cleanReply = rawReply.replace("HANDOFF_REQUIRED", "").trim();
 
     if (isHandoff) {
-      cleanReply += "\n\n🤝 A Coneio team member will personally connect with you shortly.";
+      cleanReply += "\n\n🤝 A SeaOne team member will personally connect with you shortly.";
       handoffState.set(phone, true);
       console.log(`🔀 Handoff: ${phone}`);
     }
