@@ -1070,7 +1070,7 @@ Reply directly to their question. Be specific and helpful. Keep it under 80 word
 
     // Clean up any leaked prompt artifacts
     rawReply = rawReply
-      .replace(/\[INST\].*?\[\/INST\]/gs, "")
+      .replace(/\[INST\][\s\S]*?\[\/INST\]/g, "")
       .replace(/^Assistant:/i, "")
       .replace(/^Bot:/i, "")
       .trim();
