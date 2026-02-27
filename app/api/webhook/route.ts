@@ -1319,7 +1319,7 @@ async function getAIReply(
     console.log(`💬 Gemini [${customerName}]: "${customerMessage}"`);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1354,7 +1354,14 @@ async function getAIReply(
       };
     }
 
-    const rawReply: string = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    // ✅ For thinking models, parts may have multiple entries
+    // Find the text part (not thoughtSignature)
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const rawReply: string = parts.find((p: any) => p.text && !p.thoughtSignature)?.text
+      || parts.find((p: any) => p.text)?.text
+      || "";
+
+    console.log(`📝 Parts count: ${parts.length}, types: ${parts.map((p:any) => Object.keys(p).join(',')).join(' | ')}`);
 
     if (!rawReply) {
       console.error("❌ Empty reply. Full response:", JSON.stringify(data));
