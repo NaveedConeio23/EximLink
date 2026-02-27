@@ -454,8 +454,33 @@ async function sendWelcomeTemplate(
     const phone = phoneRaw.replace(/\D/g, "");
     const safeName = (customerName || "").trim() || "Customer";
 
-    // ✅ Build the welcome message text (same content as your template)
-    const welcomeText = `Hello ${safeName} 👋\n\nWelcome to Coneio Exim.\n\nThank you for reaching out to us. We operate across multiple global platforms including:\n\n• Dollarexim – Cross-border trade solutions\n• SeaOne – Global B2B marketplace\n• SeaOne Digital – Digital growth & technology services\n• Coneio – Granite import & export via shipping\n\nOur team has received your enquiry and will get back to you shortly.\n\nKindly share your specific requirement for faster assistance.\n\n🌐 Visit us: https://www.dollarexim.com`;
+    // ✅ Professional welcome message — SeaOne Global Trade Ecosystem
+    const welcomeText = `Hello ${safeName} 👋 Welcome to the *SeaOne Global Trade Ecosystem!*
+
+We are a fully integrated trade and logistics group operating across 5 specialized platforms:
+
+🟢 *Coneio* (coneio.com)
+Corporate & group identity platform
+
+🔵 *SeaOne.io* (seaone.io)
+Smart Digital Freight Engine — get optimized routes & pricing instantly
+
+🟣 *SeaOne Digital* (seaonedigital.com)
+Global logistics partner & forwarder network
+
+🟠 *DollarExim* (dollarexim.com)
+Global granite & stone trade marketplace
+
+🟡 *SilkRouteX* (silkroutex.com)
+AI-powered HSN classification & trade compliance intelligence
+
+---
+Our team has received your enquiry. To assist you faster, please tell us:
+• What are you looking for? (freight / granite / HSN / partnerships)
+• Origin & destination (if logistics related)
+• Product & quantity (if trade related)
+
+We will get back to you shortly. 🙏`;
 
     console.log("🚀 Sending welcome message to:", phone, "| Name:", safeName);
 
@@ -491,7 +516,7 @@ async function sendWelcomeTemplate(
     await createWhatsAppMessage(
       crmToken,
       conversationId,
-      "EximLink Bot",
+      "SeaOne Bot",
       phone,
       welcomeText,
       833680001,
