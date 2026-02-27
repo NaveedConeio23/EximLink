@@ -1274,7 +1274,7 @@ cloudinary.config({
 // ==================================================
 // 🧠 SEAONE ECOSYSTEM SYSTEM PROMPT
 // ==================================================
-const SYSTEM_PROMPT = `You are the official WhatsApp AI assistant for the SeaOne Global Trade Ecosystem. Be professional, friendly, and concise (max 100 words per reply).
+const SYSTEM_PROMPT = `You are the official WhatsApp AI assistant for Coneio Exim — the SeaOne Global Trade Ecosystem. Be professional, friendly, and concise (max 100 words per reply).
 
 OUR 5 PLATFORMS:
 1. coneio.com — Corporate & group identity platform
@@ -1310,7 +1310,7 @@ async function getAIReply(
 
   if (handoffState.get(phone)) {
     return {
-      reply: "Thank you for your patience 🙏 Our team member will connect with you shortly.\n\nMeanwhile:\n🔵 seaone.io — Freight rates\n🟠 dollarexim.com — Granite trade\n🟡 silkroutex.com — HSN & compliance\n🟢 coneio.com — About us",
+      reply: "Thank you for your patience 🙏 A Coneio Exim team member will connect with you shortly.\n\nMeanwhile:\n🔵 seaone.io — Freight rates\n🟠 dollarexim.com — Granite trade\n🟡 silkroutex.com — HSN & compliance\n🟢 coneio.com — About us",
       isHandoff: false,
     };
   }
@@ -1319,7 +1319,7 @@ async function getAIReply(
     console.log(`💬 Gemini [${customerName}]: "${customerMessage}"`);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1336,10 +1336,9 @@ async function getAIReply(
           ],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 800,
+            maxOutputTokens: 500,
             topP: 0.9,
           },
-          thinkingConfig: { thinkingBudget: 0 },
         }),
       }
     );
@@ -1350,7 +1349,7 @@ async function getAIReply(
     if (!response.ok) {
       console.error("❌ Gemini Error:", JSON.stringify(data));
       return {
-        reply: "Thank you for contacting SeaOne! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
+        reply: "Thank you for contacting Coneio Exim! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
         isHandoff: false,
       };
     }
@@ -1371,7 +1370,7 @@ async function getAIReply(
     let cleanReply = rawReply.replace("HANDOFF_REQUIRED", "").trim();
 
     if (isHandoff) {
-      cleanReply += "\n\n🤝 A SeaOne team member will personally connect with you shortly.";
+      cleanReply += "\n\n🤝 A Coneio Exim team member will personally connect with you shortly.";
       handoffState.set(phone, true);
       console.log(`🔀 Handoff: ${phone}`);
     }
@@ -1492,7 +1491,7 @@ export async function POST(req: NextRequest) {
     if (message.type === "text" && text) {
       const { reply } = await getAIReply(text, name, phone);
       await sendWhatsAppReply(phone, reply);
-      await createWhatsAppMessage(crmToken, conversationId!, "SeaOne Bot", phone, reply, 833680001);
+      await createWhatsAppMessage(crmToken, conversationId!, "Coneio Exim Bot", phone, reply, 833680001);
     }
 
     return NextResponse.json({ received: true });
