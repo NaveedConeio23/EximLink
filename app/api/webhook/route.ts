@@ -313,7 +313,7 @@ cloudinary.config({
 // ==================================================
 // 🧠 SEAONE ECOSYSTEM SYSTEM PROMPT
 // ==================================================
-const SYSTEM_PROMPT = `You are the official WhatsApp AI assistant for Coneio Exim — the SeaOne Global Trade Ecosystem. Be professional, friendly, and thorough. Give COMPLETE responses — never cut off mid-sentence.
+const SYSTEM_PROMPT = `You are the official WhatsApp AI assistant for Coneio Global Trade Ecosystem. Be professional, friendly, and thorough. Give COMPLETE responses — never cut off mid-sentence.
 
 OUR 5 PLATFORMS:
 1. coneio.com — Corporate & group identity platform
@@ -331,34 +331,61 @@ ROUTING RULES (always mention the relevant platform URL):
 
 PRICING: Never give exact prices. For freight: ask origin, destination, cargo type. For granite: ask product, quantity, destination.
 
-== CONVERSATION FLOW (VERY IMPORTANT) ==
-You have a natural, professional conversation to understand the customer's needs.
+== CONVERSATION FLOW (CRITICAL) ==
+You are collecting customer requirements through natural conversation. You have access to the full conversation history.
 
-WHILE COLLECTING: Keep asking relevant questions conversationally until you have enough details:
-  - Granite/products: product type, quantity, destination country
-  - Freight/logistics: origin, destination, cargo type, weight/volume
-  - HSN/compliance: product name, country of import/export
-  - Partnerships: company type, location
+PHASE 1 — COLLECTING:
+Ask for missing details one or two at a time (not all at once):
+  - Granite/stone: product type → quantity → destination
+  - Freight/logistics: origin → destination → cargo type + weight
+  - HSN/compliance: product name → countries involved
+  - Partnerships: company type → location
 
-ONCE YOU HAVE ENOUGH DETAILS: Do NOT keep asking more questions. Instead send a warm closing message that:
-  - Briefly summarizes what they need (1-2 lines)
-  - Thanks them warmly
-  - Says our team will contact them within 24 hours with full details
-  - Feels natural and complete, not robotic
+PHASE 2 — CONFIRM & CLOSE (trigger this when you have enough core details):
+Once customer has given the key details (product/service + at least one more detail like quantity OR destination), send ONE confirmation message in this format:
 
-Example closing (adapt naturally to the conversation):
 "Thank you, [Name]! 🙏
-We've noted your requirement for [brief summary]. Our team will get in touch with you within 24 hours with all the details, pricing, and next steps.
-Looking forward to working with you! 😊"
 
-After sending the closing — if customer replies again with new questions, answer them helpfully. If they say thanks/ok/bye, respond warmly and wish them well.
+We have received your enquiry:
+[Use relevant emojis to list each detail they provided, e.g.]
+📦 Product: Black Galaxy Granite
+📐 Quantity: 500 sq ft  
+🌍 Destination: UAE
+🔢 HSN: 680233
 
-HANDOFF: Write HANDOFF_REQUIRED at the end ONLY if customer is angry/complaining, wants to negotiate, or asks for a human.`;
+Our Coneio Global Trade team will review your requirements and contact you within 24 hours with detailed pricing, availability, and next steps.
+
+We look forward to working with you! 😊"
+
+Then add REQUIREMENTS_COMPLETE at the very end (hidden marker, not shown to user).
+
+PHASE 3 — AFTER CLOSING:
+If customer sends another message after the closing:
+- New question → answer it helpfully
+- "ok", "thanks", "noted" → respond warmly: "You're welcome! Have a great day! 😊 Feel free to reach out anytime."
+- New requirement → collect and send another confirmation
+
+HANDOFF: Add HANDOFF_REQUIRED at end ONLY if customer is angry, wants to negotiate price, or asks for human.`;
 
 // ==================================================
-// 🔄 HANDOFF STATE
+// 🔄 CONVERSATION STATE TRACKING
 // ==================================================
 const handoffState = new Map<string, boolean>();
+
+// Stores last N messages per phone number for context
+const conversationHistory = new Map<string, { role: string; text: string }[]>();
+
+function addToHistory(phone: string, role: string, text: string) {
+  const history = conversationHistory.get(phone) || [];
+  history.push({ role, text });
+  // Keep last 10 messages only
+  if (history.length > 10) history.shift();
+  conversationHistory.set(phone, history);
+}
+
+function getHistory(phone: string): { role: string; text: string }[] {
+  return conversationHistory.get(phone) || [];
+}
 
 // ==================================================
 // 🤖 GET AI REPLY FROM GOOGLE GEMINI
@@ -400,10 +427,26 @@ async function getAIReply(
             system_instruction: {
               parts: [{ text: SYSTEM_PROMPT }],
             },
+            // ✅ Pass full conversation history for context
             contents: [
+              // First message includes customer name for context
               {
                 role: "user",
-                parts: [{ text: `My name is ${customerName}. ${customerMessage}` }],
+                parts: [{ text: `My name is ${customerName}.` }],
+              },
+              {
+                role: "model",
+                parts: [{ text: `Hello ${customerName}! Welcome to Coneio Global Trade Ecosystem. How can I assist you today?` }],
+              },
+              // Include previous conversation turns
+              ...getHistory(phone).map(h => ({
+                role: h.role === "bot" ? "model" : "user",
+                parts: [{ text: h.text }],
+              })),
+              // Current message
+              {
+                role: "user",
+                parts: [{ text: customerMessage }],
               },
             ],
             generationConfig: {
@@ -429,7 +472,7 @@ async function getAIReply(
     if (!response.ok || !data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       console.error("❌ All Gemini models failed");
       return {
-        reply: "Thank you for contacting Coneio Exim! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
+        reply: "Thank you for contacting Coneio Global Trade! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
         isHandoff: false,
       };
     }
@@ -454,15 +497,22 @@ async function getAIReply(
     console.log(`🤖 Reply: "${rawReply.substring(0, 150)}"`);
 
     const isHandoff = rawReply.includes("HANDOFF_REQUIRED");
+    const isComplete = rawReply.includes("REQUIREMENTS_COMPLETE");
 
     let cleanReply = rawReply
       .replace("HANDOFF_REQUIRED", "")
+      .replace("REQUIREMENTS_COMPLETE", "")
       .trim();
 
     if (isHandoff) {
-      cleanReply += "\n\n🤝 A Coneio Exim team member will personally connect with you shortly.";
+      cleanReply += "\n\n🤝 A Coneio Global Trade team member will personally connect with you shortly.";
       handoffState.set(phone, true);
       console.log(`🔀 Handoff triggered for: ${phone}`);
+    }
+
+    if (isComplete) {
+      console.log(`✅ Requirements confirmed for: ${phone}`);
+      // Don't block further messages — just log it
     }
 
     return { reply: cleanReply, isHandoff };
@@ -579,9 +629,16 @@ export async function POST(req: NextRequest) {
     await createWhatsAppMessage(crmToken, conversationId!, name, phone, text, 833680000, fileUrl);
 
     if (message.type === "text" && text) {
+      // Save user message to history
+      addToHistory(phone, "user", text);
+
       const { reply } = await getAIReply(text, name, phone);
+
+      // Save bot reply to history
+      addToHistory(phone, "bot", reply);
+
       await sendWhatsAppReply(phone, reply);
-      await createWhatsAppMessage(crmToken, conversationId!, "Coneio Exim Bot", phone, reply, 833680001);
+      await createWhatsAppMessage(crmToken, conversationId!, "Coneio Global Trade Bot", phone, reply, 833680001);
     }
 
     return NextResponse.json({ received: true });
