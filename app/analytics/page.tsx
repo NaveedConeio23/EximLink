@@ -37,7 +37,8 @@ export default function AnalyticsPage() {
   const totalMsgs = messages.length;
   const incoming = messages.filter((m) => m.cr89e_direction === 833680000).length;
   const outgoing = messages.filter((m) => m.cr89e_direction === 833680001).length;
-  const botMsgs = messages.filter((m) => m.cr89e_sender?.toLowerCase().includes("bot")).length;
+  // Bot messages are stored with sender name containing "bot" in cr89e_name
+  const botMsgs = messages.filter((m) => m.cr89e_direction === 833680001 && (m.cr89e_name || "").toLowerCase().includes("bot")).length;
   const agentMsgs = outgoing - botMsgs;
 
   // Messages by day (last 7 days)
@@ -52,14 +53,13 @@ export default function AnalyticsPage() {
   });
   const maxDay = Math.max(...msgsByDay.map((d) => d.count), 1);
 
-  // Top contacts
+  // Top contacts — incoming messages grouped by sender name (cr89e_name)
   const contactCounts: Record<string, { name: string; count: number }> = {};
   messages.forEach((m) => {
     if (m.cr89e_direction === 833680000) {
-      const conv = conversations.find((c) => c.cr89e_phonenumber === m.cr89e_phonenumber);
-      const key = m.cr89e_phonenumber || "unknown";
-      if (!contactCounts[key]) contactCounts[key] = { name: conv?.cr89e_name || key, count: 0 };
-      contactCounts[key].count++;
+      const name = (m.cr89e_name || "Unknown").trim();
+      if (!contactCounts[name]) contactCounts[name] = { name, count: 0 };
+      contactCounts[name].count++;
     }
   });
   const topContacts = Object.values(contactCounts).sort((a, b) => b.count - a.count).slice(0, 5);

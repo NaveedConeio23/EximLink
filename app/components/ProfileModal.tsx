@@ -43,24 +43,24 @@ export default function ProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-[#12251d] border border-[#1f2f28] w-full max-w-md rounded-2xl p-8 shadow-2xl relative">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl border-2 border-[#9B5DE5]/10 relative">
 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          className="absolute top-4 right-4 text-[#4A4E69]/40 hover:text-[#9B5DE5] transition"
         >
           ✕
         </button>
 
         {/* Avatar */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-[#6ee7a0] text-black flex items-center justify-center text-2xl font-bold shadow-lg">
+          <div className="w-20 h-20 rounded-2xl bg-[#9B5DE5] text-white flex items-center justify-center text-xl font-semibold shadow-lg shadow-[#9B5DE5]/30">
             {initials}
           </div>
 
-          <p className="mt-3 text-sm text-gray-400">
+          <p className="mt-4 text-xs font-semibold text-[#4A4E69]/50 uppercase tracking-wider">
             Profile Information
           </p>
         </div>
@@ -71,20 +71,20 @@ export default function ProfileModal({
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             placeholder="First Name"
-            className="w-full bg-[#1c3b25] px-4 py-3 rounded-lg outline-none text-sm"
+            className="w-full bg-[#F5F5DC]/50 border-2 border-[#4A4E69]/5 px-4 py-3 rounded-2xl outline-none text-sm font-medium text-[#4A4E69] placeholder-[#4A4E69]/30 focus:border-[#9B5DE5]/30 transition"
           />
 
           <input
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             placeholder="Last Name"
-            className="w-full bg-[#1c3b25] px-4 py-3 rounded-lg outline-none text-sm"
+            className="w-full bg-[#F5F5DC]/50 border-2 border-[#4A4E69]/5 px-4 py-3 rounded-2xl outline-none text-sm font-medium text-[#4A4E69] placeholder-[#4A4E69]/30 focus:border-[#9B5DE5]/30 transition"
           />
 
           <input
             value={user.email}
             disabled
-            className="w-full bg-[#0f1e17] px-4 py-3 rounded-lg outline-none text-sm text-gray-500 cursor-not-allowed"
+            className="w-full bg-[#F5F5DC]/30 border-2 border-[#4A4E69]/5 px-4 py-3 rounded-2xl outline-none text-sm text-[#4A4E69]/40 cursor-not-allowed"
           />
         </div>
 
@@ -94,7 +94,7 @@ export default function ProfileModal({
           {/* Save */}
           <button
             onClick={handleSave}
-            className="w-full bg-[#6ee7a0] text-black py-3 rounded-lg font-semibold hover:scale-[1.02] transition"
+            className="w-full bg-[#9B5DE5] text-white py-3 rounded-2xl text-sm font-semibold hover:scale-[1.02] transition shadow-lg shadow-[#9B5DE5]/30"
           >
             Save Changes
           </button>
@@ -102,7 +102,7 @@ export default function ProfileModal({
           {/* Logout */}
           <button
             onClick={handleLogout}
-            className="w-full bg-red-500/20 border border-red-500/40 text-red-400 py-3 rounded-lg font-semibold hover:bg-red-500/30 transition"
+            className="w-full bg-red-100 text-red-600 py-3 rounded-2xl text-sm font-semibold hover:bg-red-200 transition border border-red-200"
           >
             Logout
           </button>
