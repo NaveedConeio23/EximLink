@@ -1458,7 +1458,6 @@
 
 
 
-
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -1803,7 +1802,11 @@ export default function ChatDashboard() {
                 const prev = i > 0 ? new Date(messages[i - 1].cr89e_timestamp) : null;
                 const showDate = !prev || d.toDateString() !== prev.toDateString();
                 const isIn = m.cr89e_direction === 833680000;
-                const isBot = !isIn && m.cr89e_sender?.toLowerCase().includes("bot");
+                // Detect sender from cr89e_name stored in CRM
+                const senderName: string = m.cr89e_name || "";
+                const isFromBot = !isIn && senderName.toLowerCase().includes("bot");
+                const isFromAgent = !isIn && !isFromBot;
+
                 return (
                   <div key={m.cr89e_crmwhatsappid}>
                     {showDate && (
@@ -1817,31 +1820,34 @@ export default function ChatDashboard() {
                       <div className="max-w-[72%]">
                         {!isIn && (
                           <div className="flex justify-end mb-1">
-                            <span className={`text-[9px] font-black uppercase tracking-widest ${isBot ? "text-[#48CAE4]" : "text-[#FF8C42]"}`}>
-                              {isBot ? "🤖 Coneio Bot" : "👤 Agent"}
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${isFromBot ? "text-[#48CAE4]" : "text-[#9B5DE5]"}`}>
+                              {isFromBot ? "🤖 Coneio Bot" : `👤 ${senderName || "Agent"}`}
                             </span>
                           </div>
                         )}
-                        <div className={`px-5 py-4 rounded-3xl text-xs font-medium leading-relaxed
-                          ${isIn ? "bg-white rounded-tl-none border-2 border-[#4A4E69]/5 text-[#4A4E69]"
-                            : isBot ? "bg-[#48CAE4] rounded-tr-none text-white shadow-lg shadow-[#48CAE4]/20"
-                            : "bg-[#FF8C42] rounded-tr-none text-white shadow-lg shadow-[#FF8C42]/20"}`}
+                        <div className={`px-5 py-3 rounded-3xl text-xs font-medium leading-relaxed
+                          ${isIn
+                            ? "bg-white rounded-tl-none border-2 border-[#4A4E69]/5 text-[#4A4E69]"
+                            : isFromBot
+                              ? "bg-[#48CAE4] rounded-tr-none text-white shadow-lg shadow-[#48CAE4]/20"
+                              : "bg-[#9B5DE5] rounded-tr-none text-white shadow-lg shadow-[#9B5DE5]/20"
+                          }`}
                           style={isIn ? { boxShadow: "4px 4px 0px rgba(0,0,0,0.04)" } : undefined}>
                           {m.cr89e_messagetext && <p className="break-words whitespace-pre-wrap">{m.cr89e_messagetext}</p>}
                           {m.cr89e_fileurl && (
                             <div className={`mt-2 flex items-center justify-between gap-4 p-3 rounded-2xl ${isIn ? "bg-[#F5F5DC]" : "bg-white/20"}`}>
                               <div className="flex flex-col">
-                                <span className="font-bold text-sm break-all">{decodeURIComponent(m.cr89e_fileurl.split("/").pop()?.split("?")[0] || "File")}</span>
+                                <span className="font-bold text-xs break-all">{decodeURIComponent(m.cr89e_fileurl.split("/").pop()?.split("?")[0] || "File")}</span>
                                 <span className="text-xs opacity-60">📎 Attachment</span>
                               </div>
                               <a href={m.cr89e_fileurl} target="_blank" download={m.cr89e_filename}
-                                className={`text-xs px-3 py-1.5 rounded-xl font-black ${isIn ? "bg-[#FF8C42] text-white" : "bg-white text-[#48CAE4]"}`}>
+                                className={`text-xs px-3 py-1.5 rounded-xl font-black ${isIn ? "bg-[#FF8C42] text-white" : isFromBot ? "bg-white text-[#48CAE4]" : "bg-white text-[#9B5DE5]"}`}>
                                 Download
                               </a>
                             </div>
                           )}
                         </div>
-                        <div className={`text-[10px] mt-1.5 font-bold text-[#4A4E69]/40 uppercase ${isIn ? "text-left pl-1" : "text-right pr-1"}`}>
+                        <div className={`text-[10px] mt-1.5 font-bold text-[#4A4E69]/40 ${isIn ? "text-left pl-1" : "text-right pr-1"}`}>
                           {formatTime(d)}
                         </div>
                       </div>

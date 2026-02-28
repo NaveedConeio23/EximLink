@@ -834,13 +834,10 @@
 
 
 
-
-
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
-import { agentModeMap } from "@/lib/agentMode";
+import { getAgentMode, setAgentMode } from "@/lib/agentMode";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -946,95 +943,146 @@ async function getAIReply(
     };
   }
 
-  // Try models in order — fallback if one fails due to quota
-  // Models your project has quota for (based on AI Studio rate limit page)
-  const MODELS = [
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-2.0-flash-001",
+  // ============================================================
+  // GROQ API — Free tier, keys never expire, ultra fast
+  // Models: llama-3.3-70b-versatile (best), llama-3.1-8b-instant (fast)
+  // Get free key: https://console.groq.com → API Keys → Create
+  // ============================================================
+  const GROQ_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
   ];
 
+  const GROQ_KEYS = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3,
+  ].filter(Boolean) as string[];
+
+  // Also keep Gemini as backup if GEMINI_API_KEY is set
+  const GEMINI_KEYS = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+  ].filter(Boolean) as string[];
+
   try {
-    console.log(`💬 Gemini [${customerName}]: "${customerMessage}"`);
+    console.log(`💬 AI Reply [${customerName}]: "${customerMessage}"`);
 
-    let data: any = null;
-    let response: any = null;
+    // Build conversation history for OpenAI-compatible format (Groq uses this)
+    const historyMessages: { role: string; content: string }[] = [];
+    const history = getHistory(phone);
+    for (const h of history) {
+      historyMessages.push({
+        role: h.role === "bot" ? "assistant" : "user",
+        content: h.text,
+      });
+    }
 
-    for (const model of MODELS) {
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: {
-              parts: [{ text: SYSTEM_PROMPT }],
-            },
-            // ✅ Pass full conversation history for context
-            contents: [
-              // First message includes customer name for context
-              {
-                role: "user",
-                parts: [{ text: `My name is ${customerName}.` }],
+    let rawReply = "";
+
+    // ─── Try Groq first (free, fast, stable) ───────────────────
+    if (GROQ_KEYS.length > 0) {
+      outer_groq: for (const apiKey of GROQ_KEYS) {
+        for (const model of GROQ_MODELS) {
+          try {
+            const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`,
               },
-              {
-                role: "model",
-                parts: [{ text: `Hello ${customerName}! Welcome to Coneio Global Trade Ecosystem. How can I assist you today?` }],
-              },
-              // Include previous conversation turns
-              ...getHistory(phone).map(h => ({
-                role: h.role === "bot" ? "model" : "user",
-                parts: [{ text: h.text }],
-              })),
-              // Current message
-              {
-                role: "user",
-                parts: [{ text: customerMessage }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 2048,
-              topP: 0.9,
-            },
-          }),
+              body: JSON.stringify({
+                model,
+                messages: [
+                  { role: "system", content: SYSTEM_PROMPT + `
+
+Customer name: ${customerName}` },
+                  ...historyMessages,
+                  { role: "user", content: customerMessage },
+                ],
+                temperature: 0.7,
+                max_tokens: 1024,
+              }),
+            });
+
+            const data = await res.json();
+            console.log(`📨 Groq model: ${model} | Status: ${res.status} | ${JSON.stringify(data).substring(0, 120)}`);
+
+            if (res.ok && data?.choices?.[0]?.message?.content) {
+              rawReply = data.choices[0].message.content.trim();
+              console.log(`✅ Groq success: ${model}`);
+              break outer_groq;
+            }
+
+            const errMsg = data?.error?.message?.substring(0, 80) || "unknown";
+            console.warn(`⚠️ Groq ${model} failed: ${errMsg}`);
+
+            if (data?.error?.code === "invalid_api_key") break; // try next key
+          } catch (e) {
+            console.warn(`⚠️ Groq fetch error: ${e}`);
+          }
         }
-      );
-
-      data = await response.json();
-      console.log(`📨 Model: ${model} | Status: ${response.status} | Response: ${JSON.stringify(data).substring(0, 150)}`);
-
-      if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-        console.log(`✅ Using model: ${model}`);
-        break; // found a working model
       }
-
-      console.warn(`⚠️ Model ${model} failed (${data?.error?.code}): ${data?.error?.message?.substring(0, 80)}`);
     }
 
-    if (!response.ok || !data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      console.error("❌ All Gemini models failed");
-      return {
-        reply: "Thank you for contacting Coneio Global Trade! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
-        isHandoff: false,
-      };
+    // ─── Fallback to Gemini if Groq failed and key available ───
+    if (!rawReply && GEMINI_KEYS.length > 0) {
+      outer_gemini: for (const apiKey of GEMINI_KEYS) {
+        for (const model of ["gemini-2.5-flash", "gemini-2.0-flash-001"]) {
+          try {
+            const geminiTurns: { role: string; parts: { text: string }[] }[] = [];
+            for (const h of history) {
+              const role = h.role === "bot" ? "model" : "user";
+              if (geminiTurns.length > 0 && geminiTurns[geminiTurns.length - 1].role === role) {
+                geminiTurns[geminiTurns.length - 1].parts[0].text += "
+" + h.text;
+              } else {
+                geminiTurns.push({ role, parts: [{ text: h.text }] });
+              }
+            }
+            if (geminiTurns.length === 0 || geminiTurns[geminiTurns.length - 1].role === "model") {
+              geminiTurns.push({ role: "user", parts: [{ text: `[${customerName}] ${customerMessage}` }] });
+            } else {
+              geminiTurns[geminiTurns.length - 1].parts[0].text += "
+" + customerMessage;
+            }
+
+            const res = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+                  contents: geminiTurns,
+                  generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+                }),
+              }
+            );
+
+            const data = await res.json();
+            console.log(`📨 Gemini model: ${model} | Status: ${res.status}`);
+
+            if (res.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+              const parts = data.candidates[0].content.parts;
+              rawReply = (parts.find((p: any) => p.text && !p.thoughtSignature) || parts[0])?.text?.trim() || "";
+              if (rawReply) { console.log(`✅ Gemini fallback success: ${model}`); break outer_gemini; }
+            }
+
+            const errMsg = data?.error?.message || "";
+            console.warn(`⚠️ Gemini ${model} failed: ${errMsg.substring(0, 80)}`);
+            if (errMsg.includes("expired") || errMsg.includes("invalid")) break;
+          } catch (e) {
+            console.warn(`⚠️ Gemini fetch error: ${e}`);
+          }
+        }
+      }
     }
-
-    // ✅ For thinking models, parts may have multiple entries
-    // Find the text part (not thoughtSignature)
-    const parts = data?.candidates?.[0]?.content?.parts || [];
-    const rawReply: string = parts.find((p: any) => p.text && !p.thoughtSignature)?.text
-      || parts.find((p: any) => p.text)?.text
-      || "";
-
-    console.log(`📝 Parts count: ${parts.length}, types: ${parts.map((p:any) => Object.keys(p).join(',')).join(' | ')}`);
 
     if (!rawReply) {
-      console.error("❌ Empty reply. Full response:", JSON.stringify(data));
-      return {
-        reply: "Thank you for your message! Our team will get back to you shortly. 🙏",
-        isHandoff: false,
-      };
+      console.error("❌ All AI providers failed — staying silent");
+      return { reply: "", isHandoff: false };
     }
 
     console.log(`🤖 Reply: "${rawReply.substring(0, 150)}"`);
@@ -1173,7 +1221,7 @@ export async function POST(req: NextRequest) {
 
     if (message.type === "text" && text) {
       // ✅ Check if agent has taken over — if yes, bot stays SILENT
-      if (agentModeMap.get(phone)) {
+      if (getAgentMode(phone)) {
         console.log(`🔇 Agent mode ON for ${phone} — bot is silent, agent handles this chat`);
         return NextResponse.json({ received: true });
       }
@@ -1183,9 +1231,15 @@ export async function POST(req: NextRequest) {
 
       const { reply } = await getAIReply(text, name, phone);
 
+      // Empty reply = API key issue, stay silent
+      if (!reply || !reply.trim()) {
+        console.log("🔇 Empty reply — not sending anything (check API key)");
+        return NextResponse.json({ received: true });
+      }
+
       // If handoff triggered by AI, also set agent mode
       if (reply.includes("A Coneio Global Trade team member will personally connect")) {
-        agentModeMap.set(phone, true);
+        setAgentMode(phone, true);
         console.log(`🔀 Handoff detected — setting agent mode ON for ${phone}`);
       }
 
