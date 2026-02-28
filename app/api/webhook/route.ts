@@ -1550,7 +1550,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
@@ -1608,39 +1607,58 @@ async function getAIReply(
     };
   }
 
+  // Try models in order — fallback if one fails due to quota
+  // Models your project has quota for (based on AI Studio rate limit page)
+  const MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash-001",
+  ];
+
   try {
     console.log(`💬 Gemini [${customerName}]: "${customerMessage}"`);
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // ✅ Correct Gemini API structure with system instruction separate
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT }],
-          },
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `My name is ${customerName}. ${customerMessage}` }],
+    let data: any = null;
+    let response: any = null;
+
+    for (const model of MODELS) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: [{ text: SYSTEM_PROMPT }],
             },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-            topP: 0.9,
-          },
-        }),
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: `My name is ${customerName}. ${customerMessage}` }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 2048,
+              topP: 0.9,
+            },
+          }),
+        }
+      );
+
+      data = await response.json();
+      console.log(`📨 Model: ${model} | Status: ${response.status} | Response: ${JSON.stringify(data).substring(0, 150)}`);
+
+      if (response.ok && data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+        console.log(`✅ Using model: ${model}`);
+        break; // found a working model
       }
-    );
 
-    const data = await response.json();
-    console.log("📨 Gemini status:", response.status, "| response:", JSON.stringify(data).substring(0, 200));
+      console.warn(`⚠️ Model ${model} failed (${data?.error?.code}): ${data?.error?.message?.substring(0, 80)}`);
+    }
 
-    if (!response.ok) {
-      console.error("❌ Gemini Error:", JSON.stringify(data));
+    if (!response.ok || !data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      console.error("❌ All Gemini models failed");
       return {
         reply: "Thank you for contacting Coneio Exim! 🙏 Please tell us what you need — freight rates, granite products, HSN codes, or logistics partnerships?",
         isHandoff: false,
