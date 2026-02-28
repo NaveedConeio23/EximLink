@@ -1035,8 +1035,7 @@ Customer name: ${customerName}` },
             for (const h of history) {
               const role = h.role === "bot" ? "model" : "user";
               if (geminiTurns.length > 0 && geminiTurns[geminiTurns.length - 1].role === role) {
-                geminiTurns[geminiTurns.length - 1].parts[0].text += "
-" + h.text;
+                geminiTurns[geminiTurns.length - 1].parts[0].text += " " + h.text;
               } else {
                 geminiTurns.push({ role, parts: [{ text: h.text }] });
               }
@@ -1044,8 +1043,7 @@ Customer name: ${customerName}` },
             if (geminiTurns.length === 0 || geminiTurns[geminiTurns.length - 1].role === "model") {
               geminiTurns.push({ role: "user", parts: [{ text: `[${customerName}] ${customerMessage}` }] });
             } else {
-              geminiTurns[geminiTurns.length - 1].parts[0].text += "
-" + customerMessage;
+              geminiTurns[geminiTurns.length - 1].parts[0].text += " " + customerMessage;
             }
 
             const res = await fetch(
