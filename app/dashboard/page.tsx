@@ -1466,7 +1466,7 @@ import ProfileModal from "../components/ProfileModal";
 
 // ─── Types ───────────────────────────────────────────────
 type Conversation = { cr89e_crmconversationid: string; cr89e_name: string; cr89e_phonenumber: string };
-type Message = { cr89e_crmwhatsappid: string; cr89e_messagetext: string; cr89e_fileurl?: string; cr89e_filename?: string; cr89e_direction: number; cr89e_timestamp: string; cr89e_sender?: string };
+type Message = { cr89e_crmwhatsappid: string; cr89e_messagetext: string; cr89e_fileurl?: string; cr89e_filename?: string; cr89e_direction: number; cr89e_timestamp: string; cr89e_sender?: string; cr89e_name?: string };
 type Tag = { id: string; label: string; color: string };
 
 const TAG_OPTIONS: Tag[] = [
@@ -1805,7 +1805,6 @@ export default function ChatDashboard() {
                 // Detect sender from cr89e_name stored in CRM
                 const senderName: string = m.cr89e_name || "";
                 const isFromBot = !isIn && senderName.toLowerCase().includes("bot");
-                const isFromAgent = !isIn && !isFromBot;
 
                 return (
                   <div key={m.cr89e_crmwhatsappid}>
