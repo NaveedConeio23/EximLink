@@ -9,12 +9,12 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "Coneio Global Trade — WhatsApp CRM",
-  description: "WhatsApp CRM Dashboard by Coneio Global Trade Ecosystem",
+  title: "EximLink",
+  description: "WhatsApp CRM Dashboard by Coneio Exim Pvt Ltd.",
   icons: {
     icon: "/favicon.png",
-    shortcut: "/coneio2.png",
-    apple: "/coneio2.png",
+    shortcut: "/coneio4.png",
+    apple: "/coneio4.png",
   },
 };
 

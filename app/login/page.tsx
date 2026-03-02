@@ -52,8 +52,8 @@ export default function LoginPage() {
               <div className="w-16 h-16 rounded-2xl bg-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF8C42]/30 mb-4">
                 <span className="text-white text-2xl font-black">C</span>
               </div>
-              <h1 className="text-2xl font-black text-[#4A4E69] tracking-tight">Coneio Global Trade</h1>
-              <p className="text-sm text-[#4A4E69]/50 font-semibold mt-1">WhatsApp CRM Dashboard</p>
+              <h1 className="text-2xl font-black text-[#4A4E69] tracking-tight">Coneio Exim Pvt Ltd.</h1>
+              <p className="text-sm text-[#4A4E69]/50 font-semibold mt-1">EximLink Dashboard</p>
             </div>
 
             {/* Welcome */}

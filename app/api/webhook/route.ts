@@ -15,7 +15,7 @@ cloudinary.config({
 // ==================================================
 // 🧠 SEAONE ECOSYSTEM SYSTEM PROMPT
 // ==================================================
-const SYSTEM_PROMPT = `You are the official WhatsApp AI assistant for Coneio Global Trade Ecosystem. Be professional, friendly, and thorough. Give COMPLETE responses — never cut off mid-sentence.
+const SYSTEM_PROMPT = `You are the official WhatsApp AI assistant for Coneio Exim Pvt Ltd. Be professional, friendly, and thorough. Give COMPLETE responses — never cut off mid-sentence.
 
 OUR 5 PLATFORMS:
 1. coneio.com — Corporate & group identity platform
@@ -55,7 +55,7 @@ We have received your enquiry:
 🌍 Destination: UAE
 🔢 HSN: 680233
 
-Our Coneio Global Trade team will review your requirements and contact you within 24 hours with detailed pricing, availability, and next steps.
+Our Coneio Exim Pvt Ltd. team will review your requirements and contact you within 24 hours with detailed pricing, availability, and next steps.
 
 We look forward to working with you! 😊"
 
@@ -258,7 +258,7 @@ Customer name: ${customerName}` },
       .trim();
 
     if (isHandoff) {
-      cleanReply += "\n\n🤝 A Coneio Global Trade team member will personally connect with you shortly.";
+      cleanReply += "\n\n🤝 A Coneio Exim Pvt Ltd team member will personally connect with you shortly.";
       handoffState.set(phone, true);
       console.log(`🔀 Handoff triggered for: ${phone}`);
     }
@@ -400,7 +400,7 @@ export async function POST(req: NextRequest) {
       }
 
       // If handoff triggered by AI, also set agent mode
-      if (reply.includes("A Coneio Global Trade team member will personally connect")) {
+      if (reply.includes("A Coneio Exim Pvt Ltd team member will personally connect")) {
         setAgentMode(phone, true);
         console.log(`🔀 Handoff detected — setting agent mode ON for ${phone}`);
       }
@@ -409,7 +409,7 @@ export async function POST(req: NextRequest) {
       addToHistory(phone, "bot", reply);
 
       await sendWhatsAppReply(phone, reply);
-      await createWhatsAppMessage(crmToken, conversationId!, "Coneio Global Trade Bot", phone, reply, 833680001);
+      await createWhatsAppMessage(crmToken, conversationId!, "Coneio Bot", phone, reply, 833680001);
     }
 
     return NextResponse.json({ received: true });
