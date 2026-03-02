@@ -50,7 +50,7 @@ export default function LoginPage() {
             {/* Logo */}
             <div className="flex flex-col items-center mb-8">
               <div className="w-16 h-16 rounded-2xl bg-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF8C42]/30 mb-4">
-                <img src="/coneio5.png" alt="Logo" className="w-9 h-9 object-contain" />
+                <img src="/coneio5.png" alt="Logo" className="w-14 h-14 object-contain" />
               </div>
               <h1 className="text-2xl font-black text-[#4A4E69] tracking-tight">EximLink Dashboard</h1>
               <p className="text-sm text-[#4A4E69]/50 font-semibold mt-1">by Coneio</p>
