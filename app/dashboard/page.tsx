@@ -1362,7 +1362,7 @@ export default function ChatDashboard() {
       {/* ── Left Nav (Always visible with highest z-index) ── */}
       <aside className="w-16 sm:w-16 flex flex-col items-center py-5 bg-white border-r-2 border-[#FF8C42]/10 shadow-sm z-50 flex-shrink-0 relative">
         <div className="w-10 h-10 rounded-2xl bg-[#FF8C42] flex items-center justify-center shadow-lg shadow-[#FF8C42]/30 mb-6">
-          <img src="/Coneio5.png" alt="Logo" className="w-9 h-9 object-contain" />
+          <img src="/coneio6.png" alt="Logo" className="w-9 h-9 object-contain" />
         </div>
         <div className="flex flex-col gap-4 flex-1 items-center pt-2">
           <Link
