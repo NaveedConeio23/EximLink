@@ -10,7 +10,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const [user] = useState({ firstName: "Coneio", lastName: "Global" });
+  const [user] = useState({ firstName: "Coneio", lastName: "Exim" });
   const initials = user.firstName[0] + user.lastName[0];
   const COLORS = ["bg-[#FF8C42]", "bg-[#48CAE4]", "bg-[#99D98C]", "bg-[#9B5DE5]", "bg-[#F72585]", "bg-[#4361EE]"];
   const getColor = (n: string) => COLORS[(n?.charCodeAt(0) || 0) % COLORS.length];
@@ -254,7 +254,7 @@ export default function AnalyticsPage() {
             {/* Platform coverage */}
             <div className="bg-white rounded-3xl p-5 border-2 border-[#4A4E69]/5 shadow-sm">
               <h3 className="text-sm font-black text-[#4A4E69] mb-1">Platform Coverage</h3>
-              <p className="text-[10px] text-[#4A4E69]/40 font-medium mb-4">SeaOne Global Trade Ecosystem</p>
+              <p className="text-[10px] text-[#4A4E69]/40 font-medium mb-4">Coneio Exim Pvt Ltd.</p>
               <div className="grid grid-cols-5 gap-3">
                 {[
                   { name: "coneio.com", label: "Corporate", icon: "🟢", color: "bg-[#99D98C]/10 border-[#99D98C]/20 text-[#5a9e4e]" },

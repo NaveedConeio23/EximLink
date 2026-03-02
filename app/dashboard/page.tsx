@@ -1081,7 +1081,7 @@ export default function ChatDashboard() {
 
   const [user, setUser] = useState({
     firstName: "Coneio",
-    lastName: "Global",
+    lastName: "Exim",
     email: "admin@eximlink.com",
   });
 

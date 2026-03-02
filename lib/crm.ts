@@ -46,8 +46,8 @@ async function sendWelcomeTemplate(
     const phone = phoneRaw.replace(/\D/g, "");
     const safeName = (customerName || "").trim() || "Customer";
 
-    // ✅ Professional welcome message — SeaOne Global Trade Ecosystem
-    const welcomeText = `Hello ${safeName} 👋 Welcome to the *SeaOne Global Trade Ecosystem!*
+    // ✅ Professional welcome message — Coneio Exim Pvt Ltd
+    const welcomeText = `Hello ${safeName} 👋 Welcome to the *Coneio Exim Pvt Ltd!*
 
 We are a fully integrated trade and logistics group operating across 5 specialized platforms:
 
