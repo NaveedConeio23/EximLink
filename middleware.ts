@@ -63,31 +63,17 @@
 
 
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
 
-export async function middleware(req: NextRequest) {
-  const token = req.cookies.get("token")?.value;
-
-  const protectedRoutes = ["/dashboard"];
+export function middleware(req: NextRequest) {
+  const token = req.cookies.get("token");
 
   if (
-    protectedRoutes.some((route) =>
-      req.nextUrl.pathname.startsWith(route)
-    )
+    req.nextUrl.pathname.startsWith("/dashboard") &&
+    !token
   ) {
-    if (!token) {
-      return NextResponse.redirect(
-        new URL("/login", req.url)
-      );
-    }
-
-    const valid = await verifyToken(token);
-
-    if (!valid) {
-      return NextResponse.redirect(
-        new URL("/login", req.url)
-      );
-    }
+    return NextResponse.redirect(
+      new URL("/login", req.url)
+    );
   }
 
   return NextResponse.next();
