@@ -1241,6 +1241,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -1962,9 +1963,6 @@ export default function ChatDashboard() {
               const isFromBot =
                 !isIn && senderName.toLowerCase().includes("bot");
 
-              // Skip empty messages (no text and no file — old broken records)
-              if (!m.cr89e_messagetext && !m.cr89e_fileurl) return null;
-
               return (
                 <div key={m.cr89e_crmwhatsappid}>
                   {showDate && (
@@ -2008,6 +2006,9 @@ export default function ChatDashboard() {
                           <p className="break-words whitespace-pre-wrap">
                             {m.cr89e_messagetext}
                           </p>
+                        )}
+                        {!m.cr89e_messagetext && !m.cr89e_fileurl && (
+                          <p className="text-xs opacity-40 italic">📎 Media</p>
                         )}
                         {m.cr89e_fileurl && (() => {
                           // Detect media type — data: URLs (base64 GIFs/images) carry

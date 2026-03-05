@@ -36,7 +36,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken } from "@/lib/crm";
 
@@ -72,12 +71,5 @@ export async function GET(req: NextRequest) {
   );
 
   const data = await res.json();
-
-  // Filter out messages that have no content (empty text AND no file) —
-  // these are corrupted records from failed uploads, nothing to show
-  const messages = (data.value || []).filter(
-    (m: any) => m.cr89e_messagetext || m.cr89e_fileurl
-  );
-
-  return NextResponse.json(messages);
+  return NextResponse.json(data.value || []);
 }

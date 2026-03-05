@@ -454,7 +454,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
