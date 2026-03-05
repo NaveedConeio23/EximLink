@@ -455,7 +455,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken, findOrCreateConversation, createWhatsAppMessage } from "@/lib/crm";
 import { v2 as cloudinary } from "cloudinary";
@@ -816,15 +815,26 @@ export async function POST(req: NextRequest) {
         mediaData.mime_type ||
         "application/octet-stream";
 
-      const isGif = mimeType === "image/gif";
+      // ✅ GIF detection:
+      // WhatsApp handles GIFs in two ways:
+      //   1. Sent as actual GIF → message.type="image", mime_type="image/gif"
+      //   2. Sent from WhatsApp GIF picker → message.type="video", mime_type="video/mp4"
+      //      but message.video.animated = true (or caption contains gif context)
+      // We also check if the message type is "image" and mime is video/mp4 which
+      // is WhatsApp's silent GIF-to-MP4 conversion.
+      const isGif =
+        mimeType === "image/gif" ||
+        (message.type === "video" && message.video?.animated === true) ||
+        (message.type === "image" && mimeType === "video/mp4");
 
       if (isGif) {
         // ✅ GIFs only: store as base64 data URL — skips Cloudinary entirely
-        // Renders directly in <img src="data:image/gif;base64,..."> in the dashboard
+        // For MP4-converted GIFs, store as video/mp4 so the dashboard plays it inline
+        const actualMime = mimeType === "image/gif" ? "image/gif" : "video/mp4";
         const base64 = buffer.toString("base64");
-        fileUrl = `data:image/gif;base64,${base64}`;
+        fileUrl = `data:${actualMime};base64,${base64}`;
         text = "gif";
-        console.log(`🎞️ GIF stored as base64 data URL (${Math.round(buffer.length / 1024)}KB)`);
+        console.log(`🎞️ GIF stored as base64 data URL (${Math.round(buffer.length / 1024)}KB) mime=${actualMime}`);
       } else {
         // ✅ All other files (images, documents, PDFs, videos): upload to Cloudinary
         const mimeToExt: Record<string, string> = {
