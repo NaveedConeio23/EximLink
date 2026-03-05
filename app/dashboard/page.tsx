@@ -2002,7 +2002,7 @@ export default function ChatDashboard() {
                             : undefined
                         }
                       >
-                        {m.cr89e_messagetext && (
+                        {m.cr89e_messagetext && m.cr89e_messagetext !== "gif" && (
                           <p className="break-words whitespace-pre-wrap">
                             {m.cr89e_messagetext}
                           </p>
@@ -2046,9 +2046,25 @@ export default function ChatDashboard() {
                           }
 
                           if (mediaType === "video") {
+                            const isAnimatedGif = m.cr89e_messagetext === "gif";
                             return (
                               <div className="mt-2">
-                                <video src={url} controls className="rounded-2xl max-w-full max-h-56" preload="metadata" />
+                                {isAnimatedGif ? (
+                                  // GIF from WhatsApp picker — play like a GIF (autoplay, loop, no controls)
+                                  <div>
+                                    <video
+                                      src={url}
+                                      autoPlay
+                                      loop
+                                      muted
+                                      playsInline
+                                      className="rounded-2xl max-w-full max-h-64 object-contain"
+                                    />
+                                    <p className="text-[10px] opacity-50 mt-1">🎞️ GIF</p>
+                                  </div>
+                                ) : (
+                                  <video src={url} controls className="rounded-2xl max-w-full max-h-56" preload="metadata" />
+                                )}
                               </div>
                             );
                           }
