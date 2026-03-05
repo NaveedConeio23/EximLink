@@ -789,13 +789,14 @@ export async function POST(req: NextRequest) {
       text = message.text.body;
     }
 
-    if (["document", "image", "video"].includes(message.type)) {
-      const mediaId = message.document?.id || message.image?.id || message.video?.id;
+    if (["document", "image", "video", "sticker"].includes(message.type)) {
+      const mediaId = message.document?.id || message.image?.id || message.video?.id || message.sticker?.id;
 
       const mimeType: string =
         message.document?.mime_type ||
         message.image?.mime_type ||
         message.video?.mime_type ||
+        message.sticker?.mime_type ||
         "application/octet-stream";
 
       // WhatsApp GIF picker sends type="video", mime="video/mp4", animated=true
