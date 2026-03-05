@@ -816,60 +816,61 @@ export async function POST(req: NextRequest) {
         "application/octet-stream";
 
       // ✅ GIF detection:
-      // WhatsApp handles GIFs in two ways:
-      //   1. Sent as actual GIF → message.type="image", mime_type="image/gif"
-      //   2. Sent from WhatsApp GIF picker → message.type="video", mime_type="video/mp4"
-      //      but message.video.animated = true (or caption contains gif context)
-      // We also check if the message type is "image" and mime is video/mp4 which
-      // is WhatsApp's silent GIF-to-MP4 conversion.
+      // WhatsApp sends GIFs in two ways:
+      //   1. Actual .gif file → message.type="image", mime_type="image/gif"
+      //   2. WhatsApp GIF picker → message.type="video", mime_type="video/mp4", video.animated=true
       const isGif =
         mimeType === "image/gif" ||
-        (message.type === "video" && message.video?.animated === true) ||
-        (message.type === "image" && mimeType === "video/mp4");
+        (message.type === "video" && message.video?.animated === true);
 
+      // All files go to Cloudinary — GIFs uploaded with format:"gif" so URL ends in .gif
+      // This is reliable and avoids CRM field size limits from base64 storage
+      const mimeToExt: Record<string, string> = {
+        "image/gif": ".gif",
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "video/mp4": ".mp4",
+        "video/3gpp": ".3gp",
+        "audio/ogg": ".ogg",
+        "audio/mpeg": ".mp3",
+        "application/pdf": ".pdf",
+      };
+      const ext = mimeToExt[mimeType] || "";
+      const originalFileName = message.document?.filename || `${message.type}_${Date.now()}${ext}`;
+      const fileNameWithoutExt = originalFileName.replace(/\.[^/.]+$/, "");
+
+      const cloudinaryOptions: Record<string, any> = {
+        resource_type: "auto",
+        folder: `whatsapp/${phone}`,
+        public_id: fileNameWithoutExt,
+        use_filename: true,
+        unique_filename: false,
+        overwrite: true,
+      };
+
+      // ✅ Force GIF format so Cloudinary URL ends in .gif — dashboard detects by extension
       if (isGif) {
-        // ✅ GIFs only: store as base64 data URL — skips Cloudinary entirely
-        // For MP4-converted GIFs, store as video/mp4 so the dashboard plays it inline
-        const actualMime = mimeType === "image/gif" ? "image/gif" : "video/mp4";
-        const base64 = buffer.toString("base64");
-        fileUrl = `data:${actualMime};base64,${base64}`;
-        text = "gif";
-        console.log(`🎞️ GIF stored as base64 data URL (${Math.round(buffer.length / 1024)}KB) mime=${actualMime}`);
-      } else {
-        // ✅ All other files (images, documents, PDFs, videos): upload to Cloudinary
-        const mimeToExt: Record<string, string> = {
-          "image/jpeg": ".jpg",
-          "image/jpg": ".jpg",
-          "image/png": ".png",
-          "image/webp": ".webp",
-          "video/mp4": ".mp4",
-          "video/3gpp": ".3gp",
-          "audio/ogg": ".ogg",
-          "audio/mpeg": ".mp3",
-          "application/pdf": ".pdf",
-        };
-        const ext = mimeToExt[mimeType] || "";
-        const originalFileName = message.document?.filename || `file_${Date.now()}${ext}`;
-        const fileNameWithoutExt = originalFileName.replace(/\.[^/.]+$/, "");
-
-        const uploadResult: any = await new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            {
-              resource_type: "auto",
-              folder: `whatsapp/${phone}`,
-              public_id: fileNameWithoutExt,
-              use_filename: true,
-              unique_filename: false,
-              overwrite: true,
-            },
-            (error, result) => { if (error) reject(error); else resolve(result); }
-          ).end(buffer);
-        });
-
-        fileUrl = uploadResult.secure_url;
-        text = originalFileName;
-        console.log(`📎 File uploaded to Cloudinary: ${fileUrl}`);
+        cloudinaryOptions.resource_type = "image";
+        cloudinaryOptions.format = "gif";
+        cloudinaryOptions.public_id = `gif_${Date.now()}`;
       }
+
+      const uploadResult: any = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          cloudinaryOptions,
+          (error, result) => { if (error) reject(error); else resolve(result); }
+        ).end(buffer);
+      });
+
+      fileUrl = uploadResult.secure_url;
+      // Ensure URL ends with .gif for GIFs so dashboard extension check works
+      if (isGif && !fileUrl.endsWith(".gif")) {
+        fileUrl = fileUrl + ".gif";
+      }
+      text = isGif ? "gif" : originalFileName;
+      console.log(`${isGif ? "🎞️ GIF" : "📎 File"} uploaded to Cloudinary: ${fileUrl}`);
     }
 
     await createWhatsAppMessage(crmToken, conversationId!, name, phone, text, 833680000, fileUrl);

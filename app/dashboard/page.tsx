@@ -1239,6 +1239,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -2010,47 +2011,28 @@ export default function ChatDashboard() {
                           const url = m.cr89e_fileurl;
                           let mediaType: "gif" | "image" | "video" | "audio" | "document" = "document";
 
-                          if (url.startsWith("data:image/gif") || url.startsWith("data:video/mp4")) {
-                            // GIFs are stored as base64 data URLs — detect directly from mime
-                            // WhatsApp converts GIF picker GIFs to mp4, stored as data:video/mp4
-                            mediaType = "gif";
-                          } else {
-                            // All other files are Cloudinary URLs — detect from extension or path
-                            const urlLower = url.toLowerCase().split("?")[0];
-                            const ext = urlLower.split(".").pop() || "";
-                            if (["jpg","jpeg","png","webp","svg"].includes(ext)) mediaType = "image";
-                            else if (["mp4","mov","webm","3gp"].includes(ext)) mediaType = "video";
-                            else if (["mp3","ogg","aac","wav","m4a"].includes(ext)) mediaType = "audio";
-                            else if (urlLower.includes("/image/upload/")) mediaType = "image";
-                            else if (urlLower.includes("/video/upload/")) mediaType = "video";
-                          }
+                          // All files are Cloudinary URLs — detect from extension or path
+                          const urlLower = url.toLowerCase().split("?")[0];
+                          const ext = urlLower.split(".").pop() || "";
+                          if (ext === "gif") mediaType = "gif";
+                          else if (["jpg","jpeg","png","webp","svg"].includes(ext)) mediaType = "image";
+                          else if (["mp4","mov","webm","3gp"].includes(ext)) mediaType = "video";
+                          else if (["mp3","ogg","aac","wav","m4a"].includes(ext)) mediaType = "audio";
+                          else if (urlLower.includes("/image/upload/")) mediaType = "image";
+                          else if (urlLower.includes("/video/upload/")) mediaType = "video";
 
                           const dlBtnClass = `text-xs px-3 py-1.5 rounded-xl font-black whitespace-nowrap ${isIn ? "bg-[#FF8C42] text-white" : isFromBot ? "bg-white text-[#48CAE4]" : "bg-white text-[#9B5DE5]"}`;
 
                           if (mediaType === "gif" || mediaType === "image") {
-                            // MP4-encoded GIFs (from WhatsApp GIF picker) need a video tag
-                            // Image GIFs use an img tag
-                            const isMp4Gif = url.startsWith("data:video/mp4");
                             return (
                               <div className="mt-2">
-                                {isMp4Gif ? (
-                                  <video
-                                    src={url}
-                                    autoPlay
-                                    loop
-                                    muted
-                                    playsInline
-                                    className="rounded-2xl max-w-full max-h-64 object-contain"
-                                  />
-                                ) : (
-                                  <img
-                                    src={url}
-                                    alt={mediaType === "gif" ? "GIF" : "Image"}
-                                    className="rounded-2xl max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition"
-                                    loading="lazy"
-                                    onClick={() => window.open(url, "_blank")}
-                                  />
-                                )}
+                                <img
+                                  src={url}
+                                  alt={mediaType === "gif" ? "GIF" : "Image"}
+                                  className="rounded-2xl max-w-full max-h-64 object-contain cursor-pointer hover:opacity-90 transition"
+                                  loading="lazy"
+                                  onClick={() => window.open(url, "_blank")}
+                                />
                                 {mediaType === "gif" && (
                                   <p className="text-[10px] opacity-50 mt-1">🎞️ GIF</p>
                                 )}
