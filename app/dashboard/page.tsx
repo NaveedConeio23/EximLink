@@ -1250,6 +1250,38 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import ProfileModal from "../components/ProfileModal";
 
+// Auto-playing looping muted video — used for WhatsApp GIFs (sent as mp4)
+function GifVideo({ src }: { src: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.muted = true;
+    el.loop = true;
+    const tryPlay = () => el.play().catch(() => {});
+    if (el.readyState >= 3) {
+      tryPlay();
+    } else {
+      el.addEventListener("canplay", tryPlay, { once: true });
+    }
+    return () => el.removeEventListener("canplay", tryPlay);
+  }, [src]);
+  return (
+    <video
+      ref={ref}
+      src={src}
+      muted
+      loop
+      playsInline
+      preload="auto"
+      controls
+      className="rounded-2xl max-w-full max-h-64 object-contain"
+      style={{ background: "#000" }}
+    />
+  );
+}
+
+
 // ─── Types ───────────────────────────────────────────────
 type Conversation = {
   cr89e_crmconversationid: string;
@@ -2086,18 +2118,11 @@ export default function ChatDashboard() {
                           }
 
                           if (mediaType === "video") {
-                            const isAnimatedGif = m.cr89e_messagetext === "gif";
+                            // All incoming videos from WhatsApp are short GIFs/clips
+                            // Use GifVideo (autoplay, loop, muted) for all of them
                             return (
                               <div className="mt-2">
-                                {isAnimatedGif ? (
-                                  // GIF from WhatsApp picker — plays automatically like a GIF
-                                  <div>
-                                    <GifVideo src={url} />
-                                    <p className="text-[10px] opacity-50 mt-1">🎞️ GIF</p>
-                                  </div>
-                                ) : (
-                                  <video src={url} controls className="rounded-2xl max-w-full max-h-56" preload="metadata" />
-                                )}
+                                <GifVideo src={url} />
                               </div>
                             );
                           }
