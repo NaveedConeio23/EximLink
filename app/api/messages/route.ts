@@ -35,7 +35,6 @@
 
 
 
-
 import { NextRequest, NextResponse } from "next/server";
 import { getCRMToken } from "@/lib/crm";
 
@@ -48,21 +47,8 @@ export async function GET(req: NextRequest) {
 
   const token = await getCRMToken();
 
-  // Explicitly select all fields including cr89e_fileurl to ensure they are returned
-  // (Dataverse sometimes omits null/empty fields without explicit $select)
-  const fields = [
-    "cr89e_crmwhatsappid",
-    "cr89e_messagetext",
-    "cr89e_fileurl",
-    "cr89e_filename",
-    "cr89e_direction",
-    "cr89e_timestamp",
-    "cr89e_name",
-    "cr89e_phonenumber",
-  ].join(",");
-
   const res = await fetch(
-    `${process.env.CRM_BASE_URL}/api/data/v9.2/cr89e_crmwhatsapps?$filter=_cr89e_conversation_value eq ${conversationId}&$orderby=cr89e_timestamp asc&$select=${fields}`,
+    `${process.env.CRM_BASE_URL}/api/data/v9.2/cr89e_crmwhatsapps?$filter=_cr89e_conversation_value eq ${conversationId}&$orderby=cr89e_timestamp asc`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
