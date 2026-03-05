@@ -1240,6 +1240,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -1719,7 +1720,7 @@ export default function ChatDashboard() {
         </div>
 
         {/* Scrollable Conversations List */}
-        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1 min-h-0">
+        <div className="flex-1 overflow-y-auto py-3 px-3 space-y-1 min-h-0 select-none">
           {filteredConvs.length === 0 && (
             <div className="flex flex-col items-center justify-center h-40 text-[#4A4E69]/30">
               <span className="text-3xl mb-2">💬</span>
@@ -1960,6 +1961,9 @@ export default function ChatDashboard() {
               const senderName: string = m.cr89e_name || "";
               const isFromBot =
                 !isIn && senderName.toLowerCase().includes("bot");
+
+              // Skip empty messages (no text and no file — old broken records)
+              if (!m.cr89e_messagetext && !m.cr89e_fileurl) return null;
 
               return (
                 <div key={m.cr89e_crmwhatsappid}>
