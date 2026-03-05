@@ -1243,6 +1243,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -2089,18 +2090,9 @@ export default function ChatDashboard() {
                             return (
                               <div className="mt-2">
                                 {isAnimatedGif ? (
-                                  // GIF from WhatsApp picker — play like a GIF (autoplay, loop, no controls)
+                                  // GIF from WhatsApp picker — plays automatically like a GIF
                                   <div>
-                                    <video
-                                      src={url}
-                                      autoPlay
-                                      loop
-                                      muted
-                                      playsInline
-                                      preload="auto"
-                                      className="rounded-2xl max-w-full max-h-64 object-contain"
-                                      ref={(el) => { if (el) { el.muted = true; el.play().catch(() => {}); } }}
-                                    />
+                                    <GifVideo src={url} />
                                     <p className="text-[10px] opacity-50 mt-1">🎞️ GIF</p>
                                   </div>
                                 ) : (
