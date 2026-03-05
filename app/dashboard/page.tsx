@@ -1242,6 +1242,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -1344,6 +1345,44 @@ export default function ChatDashboard() {
     fetch("/api/conversations", { credentials: "include" })
       .then((r) => r.json())
       .then(setConversations);
+  }, []);
+
+  // ── 3-second polling: refresh messages + conversations without switching chat ──
+  const selectedRef = useRef<Conversation | null>(null);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      // Refresh conversation list (new chats appear automatically)
+      fetch("/api/conversations", { credentials: "include" })
+        .then((r) => r.json())
+        .then(setConversations)
+        .catch(() => {});
+
+      // Refresh messages for open conversation
+      const conv = selectedRef.current;
+      if (!conv) return;
+      try {
+        const res = await fetch(
+          `/api/messages?conversationId=${conv.cr89e_crmconversationid}`,
+          { credentials: "include" }
+        );
+        const data = await res.json();
+        const sorted = (data || []).sort(
+          (a: Message, b: Message) =>
+            new Date(a.cr89e_timestamp).getTime() - new Date(b.cr89e_timestamp).getTime()
+        );
+        setMessages((prev) => {
+          if (sorted.length !== prev.length) return sorted;
+          const lastNew = sorted[sorted.length - 1]?.cr89e_crmwhatsappid;
+          const lastOld = prev[prev.length - 1]?.cr89e_crmwhatsappid;
+          return lastNew !== lastOld ? sorted : prev;
+        });
+      } catch {
+        // silently ignore poll errors
+      }
+    }, 3000);
+    return () => clearInterval(interval);
   }, []);
 
   // Close tag menu when clicking outside
@@ -2058,7 +2097,9 @@ export default function ChatDashboard() {
                                       loop
                                       muted
                                       playsInline
+                                      preload="auto"
                                       className="rounded-2xl max-w-full max-h-64 object-contain"
+                                      ref={(el) => { if (el) { el.muted = true; el.play().catch(() => {}); } }}
                                     />
                                     <p className="text-[10px] opacity-50 mt-1">🎞️ GIF</p>
                                   </div>
