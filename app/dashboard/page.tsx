@@ -2498,6 +2498,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -2598,6 +2599,7 @@ export default function ChatDashboard() {
     {},
   );
   const [convTags, setConvTags] = useState<Record<string, string[]>>({});
+  const [convLanguages, setConvLanguages] = useState<Record<string, string>>({});
   const [showTagMenu, setShowTagMenu] = useState(false);
   const [showResolveConfirm, setShowResolveConfirm] = useState(false);
   const [toast, setToast] = useState<{
@@ -2726,6 +2728,50 @@ export default function ChatDashboard() {
     }));
   };
 
+  const LANGUAGES = [
+    { code: "auto", label: "🌐 Auto-detect" },
+    { code: "English", label: "🇬🇧 English" },
+    { code: "Hindi", label: "🇮🇳 Hindi" },
+    { code: "Telugu", label: "🇮🇳 Telugu" },
+    { code: "Tamil", label: "🇮🇳 Tamil" },
+    { code: "Arabic", label: "🇸🇦 Arabic" },
+    { code: "Turkish", label: "🇹🇷 Turkish" },
+    { code: "Urdu", label: "🇵🇰 Urdu" },
+    { code: "Persian", label: "🇮🇷 Persian" },
+    { code: "Kurdish", label: "Kurdish" },
+    { code: "Hebrew", label: "🇮🇱 Hebrew" },
+    { code: "Bengali", label: "🇧🇩 Bengali" },
+    { code: "French", label: "🇫🇷 French" },
+    { code: "Spanish", label: "🇪🇸 Spanish" },
+    { code: "German", label: "🇩🇪 German" },
+    { code: "Chinese", label: "🇨🇳 Chinese" },
+    { code: "Japanese", label: "🇯🇵 Japanese" },
+    { code: "Russian", label: "🇷🇺 Russian" },
+    { code: "Portuguese", label: "🇧🇷 Portuguese" },
+    { code: "Indonesian", label: "🇮🇩 Indonesian" },
+    { code: "Swahili", label: "🇰🇪 Swahili" },
+  ];
+
+  const currentLanguage = selected
+    ? convLanguages[selected.cr89e_crmconversationid] || "auto"
+    : "auto";
+
+  const setConvLanguage = async (lang: string) => {
+    if (!selected) return;
+    const phone = selected.cr89e_phonenumber.replace(/\s+/g, "");
+    await fetch("/api/language", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ phone, language: lang }),
+    });
+    setConvLanguages((prev) => ({
+      ...prev,
+      [selected.cr89e_crmconversationid]: lang,
+    }));
+    showToast(lang === "auto" ? "🌐 Auto-detect language ON" : `🌐 Bot will reply in ${lang}`, "info");
+  };
+
   const toggleAgentMode = async (toAgent: boolean) => {
     if (!selected) return;
     const phone = selected.cr89e_phonenumber.replace(/\s+/g, "");
@@ -2792,6 +2838,14 @@ export default function ChatDashboard() {
     setAgentModes((prev) => ({
       ...prev,
       [conv.cr89e_crmconversationid]: modeData.agentMode,
+    }));
+
+    // Sync language
+    const langRes = await fetch(`/api/language?phone=${phone}`, { credentials: "include" });
+    const langData = await langRes.json().catch(() => ({ language: "auto" }));
+    setConvLanguages((prev) => ({
+      ...prev,
+      [conv.cr89e_crmconversationid]: langData.language || "auto",
     }));
   };
 
@@ -3742,7 +3796,3 @@ export default function ChatDashboard() {
     </div>
   );
 }
-
-
-
-
