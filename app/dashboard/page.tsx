@@ -1340,6 +1340,7 @@
 
 
 
+
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -1509,17 +1510,20 @@ export default function ChatDashboard() {
           return lastNew !== lastOld ? sorted : prev;
         });
 
-        // Refresh language in case bot auto-detected a new language
+        // Refresh language — only update if server returns a real language (not "auto")
+        // Never downgrade from a known language back to "auto" (serverless instances lose state)
         const phone = conv.cr89e_phonenumber.replace(/\s+/g, "");
         const langRes = await fetch(`/api/language?phone=${phone}`, { credentials: "include" });
         const langData = await langRes.json().catch(() => ({ language: "auto" }));
-        setConvLanguages((prev) => {
-          const current = prev[conv.cr89e_crmconversationid] || "auto";
-          const updated = langData.language || "auto";
-          return current !== updated
-            ? { ...prev, [conv.cr89e_crmconversationid]: updated }
-            : prev;
-        });
+        const serverLang = langData.language || "auto";
+        if (serverLang !== "auto") {
+          setConvLanguages((prev) => {
+            const current = prev[conv.cr89e_crmconversationid] || "auto";
+            return current !== serverLang
+              ? { ...prev, [conv.cr89e_crmconversationid]: serverLang }
+              : prev;
+          });
+        }
       } catch {
         // silently ignore poll errors
       }
