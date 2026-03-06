@@ -157,7 +157,25 @@
 //               body: JSON.stringify({
 //                 model,
 //                 messages: [
-//                   { role: "system", content: SYSTEM_PROMPT + `\n\nCustomer name: ${customerName}` },
+//                   { role: "system", content: SYSTEM_PROMPT + `
+
+// Customer name: ${customerName}
+
+// == LANGUAGE INSTRUCTION (HIGHEST PRIORITY) ==
+// ${forcedLanguage === "auto"
+//   ? `DETECT the language of the customer's latest message and reply in THAT EXACT SAME language.
+// - Customer writes Hindi → you reply in Hindi
+// - Customer writes Arabic → you reply in Arabic  
+// - Customer writes Telugu → you reply in Telugu
+// - Customer writes Tamil → you reply in Tamil
+// - Customer writes Urdu → you reply in Urdu
+// - Customer writes Turkish → you reply in Turkish
+// - Customer writes Persian → you reply in Persian
+// - Customer writes any other language → reply in that language
+// - Customer writes English → reply in English
+// DO NOT reply in English if the customer wrote in another language.`
+//   : `ALWAYS reply in ${forcedLanguage}. Do NOT use any other language.`
+// }` },
 //                   ...historyMessages,
 //                   { role: "user", content: customerMessage },
 //                 ],
@@ -216,10 +234,10 @@
 
 // Customer name: ${customerName}
 
-// == LANGUAGE RULES (CRITICAL) ==
+// == LANGUAGE INSTRUCTION (HIGHEST PRIORITY) ==
 // ${forcedLanguage === "auto"
-//   ? "Detect the customer's language and reply in the SAME language always."
-//   : `Always reply in ${forcedLanguage} as set by the agent.`
+//   ? `DETECT the language of the customer's message and reply in THAT EXACT language. If they write Hindi, reply Hindi. If Arabic, reply Arabic. If Telugu, reply Telugu. Never reply in English if the customer wrote in another language.`
+//   : `ALWAYS reply in ${forcedLanguage}. Do NOT use any other language.`
 // }` }] },
 //                   contents: geminiTurns,
 //                   generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
@@ -454,6 +472,7 @@
 //     return NextResponse.json({ received: true });
 //   }
 // }
+
 
 
 
@@ -940,6 +959,38 @@ export async function POST(req: NextRequest) {
       if (!reply || !reply.trim()) {
         console.log("🔇 Empty reply — not sending anything (check API key)");
         return NextResponse.json({ received: true });
+      }
+
+      // Auto-detect language from the reply and persist it so dashboard shows correct language
+      if (forcedLang === "auto") {
+        const teluguPattern = /[ఀ-౿]/;
+        const hindiPattern = /[ऀ-ॿ]/;
+        const arabicPattern = /[؀-ۿ]/;
+        const tamilPattern = /[஀-௿]/;
+        const hebrewPattern = /[֐-׿]/;
+        const persianPattern = /[؀-ۿﭐ-﷿]/;
+        const koreanPattern = /[가-힯]/;
+        const chinesePattern = /[一-鿿]/;
+        const japanesePattern = /[぀-ヿ]/;
+        const cyrillicPattern = /[Ѐ-ӿ]/; // Russian etc
+        const greekPattern = /[Ͱ-Ͽ]/;
+
+        let detectedLang = "English";
+        if (teluguPattern.test(reply)) detectedLang = "Telugu";
+        else if (hindiPattern.test(reply)) detectedLang = "Hindi";
+        else if (tamilPattern.test(reply)) detectedLang = "Tamil";
+        else if (arabicPattern.test(reply)) detectedLang = "Arabic";
+        else if (hebrewPattern.test(reply)) detectedLang = "Hebrew";
+        else if (koreanPattern.test(reply)) detectedLang = "Korean";
+        else if (chinesePattern.test(reply)) detectedLang = "Chinese";
+        else if (japanesePattern.test(reply)) detectedLang = "Japanese";
+        else if (cyrillicPattern.test(reply)) detectedLang = "Russian";
+        else if (greekPattern.test(reply)) detectedLang = "Greek";
+
+        if (detectedLang !== "English") {
+          setLanguage(phone, detectedLang);
+          console.log(`🌐 Auto-detected language: ${detectedLang} for ${phone}`);
+        }
       }
 
       // If handoff triggered by AI, also set agent mode
